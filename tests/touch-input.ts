@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {TouchState} from '../src/client/input/TouchState';
+import {DesktopInputAdapter} from '../src/client/input/DesktopInputAdapter';
+const touch=new TouchState();
+assert.ok(touch.begin('move',2));touch.drag('move',2,.1,.1);assert.equal(touch.read(0,0,true).moveX,0,'Dead zone suppresses drift');
+touch.drag('move',2,1,-1);const diagonal=touch.read(0,0,true);assert.ok(Math.abs(Math.hypot(diagonal.moveX,diagonal.moveY)-1)<.0001);
+assert.ok(touch.begin('aim',4));touch.drag('aim',4,0,1);assert.equal(touch.read(0,0,true).basicAttackPressed,false,'Dragging only aims');assert.equal(touch.angle,Math.PI/2);
+assert.equal(touch.move.pointer,2,'Second pointer does not cancel movement');
+touch.end('aim',99);assert.equal(touch.aim.pointer,4,'Unowned pointer cannot release another control');
+touch.end('aim',4);const release=touch.read(0,0,true);assert.equal(release.basicAttackPressed,true);assert.ok(release.moveX>0,'Move and release attack coexist');assert.equal(touch.read(0,0,true).basicAttackPressed,false,'Release creates one event');
+touch.begin('aim',5);touch.drag('aim',5,.05,.02);touch.end('aim',5);assert.equal(touch.read(0,0,true).basicAttackPressed,false,'Tap within aim dead zone cancels');
+touch.begin('aim',6);touch.drag('aim',6,1,0);touch.end('aim',6,true);assert.equal(touch.read(0,0,true).basicAttackPressed,false,'pointercancel never attacks');
+touch.begin('skill',7);touch.drag('skill',7,-1,0);touch.end('skill',7);assert.equal(touch.read(0,0,true).skillPressed,true);
+touch.ultimatePressed=true;assert.equal(touch.read(0,0,true).ultimatePressed,true);assert.equal(touch.read(0,0,true).ultimatePressed,false);
+touch.begin('aim',9);touch.drag('aim',9,1,0);touch.read(0,0,false);touch.end('aim',9);assert.equal(touch.read(0,0,true).basicAttackPressed,false,'Death/blur/modal clears pointers and queued attack');assert.equal(touch.move.pointer,null);
+touch.begin('move',10);touch.drag('move',10,.5,0);assert.equal(touch.read(0,0,true).moveX,.5,'Analog magnitude is preserved');
+let held=true;const desktop=new DesktopInputAdapter(()=>({moveX:1,moveY:1,attack:held}));
+assert.equal(desktop.read(0,0,true).basicAttackPressed,true);assert.equal(desktop.read(100,0,true).basicAttackPressed,false);assert.equal(desktop.read(300,0,true).basicAttackPressed,true);
+held=false;desktop.skill=true;desktop.ultimate=true;const keys=desktop.read(310,0,true);assert.equal(keys.skillPressed,true);assert.equal(keys.ultimatePressed,true);assert.ok(Math.abs(Math.hypot(keys.moveX,keys.moveY)-1)<.001);
+assert.equal(desktop.read(320,0,true).skillPressed,false);assert.equal(desktop.read(400,0,false).moveX,0);
+console.log('PASS: dead zones, analog/diagonal movement, independent pointers, aim/release/cancel, single events, skills, ultimate, input clearing and desktop regression.');
+
+touch.clear();touch.begin('skill',20);touch.drag('skill',20,.3,.4);assert.equal(touch.targetDistance,.5,'Ground targeting preserves analog range');touch.end('skill',20);assert.equal(touch.read(0,0,true).skillPressed,true);
+desktop.clear();desktop.cooldownMs=260;held=true;assert.equal(desktop.read(0,0,true).basicAttackPressed,true);assert.equal(desktop.read(260,0,true).basicAttackPressed,true,'Character attack cadence is configurable');

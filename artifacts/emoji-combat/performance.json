@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-23",
+  "environment": "macOS host, in-app Chromium browser; visual-only eight-actor lab",
+  "observations": [
+    {"sample":4,"projectiles":80,"fps":60,"objects":166,"emojiAllocated":111,"textAllocated":52,"heapMB":22},
+    {"sample":43,"projectiles":80,"fps":60,"objects":166,"emojiAllocated":111,"textAllocated":52,"heapMB":38},
+    {"sample":69,"projectiles":160,"fps":60,"objects":203,"emojiAllocated":128,"textAllocated":72,"dropped":62,"heapMB":35},
+    {"sample":70,"projectiles":80,"fps":59,"objects":203,"emojiAllocated":128,"textAllocated":72,"dropped":0,"heapMB":29}
+  ],
+  "limits": {"emoji":128,"memeText":96,"localEffects":80,"queuedCombatEvents":256},
+  "limitations": ["Not an eight-player LAN test", "No real iOS/Android/Windows test", "Short run; JS heap only, no GPU memory measurement"]
+}

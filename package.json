@@ -1,0 +1,31 @@
+{
+  "name": "mbti-brawl",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node tests/combat.mjs && node tests/terrain.mjs",
+    "start:lan": "tsx server/GameServer.ts",
+    "test:lobby": "tsx tests/lobby.ts && tsx tests/lobby-network.ts",
+    "test:network": "tsx tests/multiplayer-combat.ts && tsx tests/network.ts",
+    "test:characters": "tsx tests/characters.ts && tsx tests/character-network.ts",
+    "test:projectiles": "tsx tests/projectile-timeline.ts",
+    "test:presentation": "tsx tests/presentation.ts",
+    "test:input": "tsx tests/touch-input.ts",
+    "test:match": "tsx tests/match.ts && tsx tests/match-network.ts"
+  },
+  "dependencies": {
+    "phaser": "^3.90.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^6.3.6",
+    "tsx": "^4.20.6",
+    "@types/node": "^22.18.0"
+  }
+}

@@ -1,0 +1,16 @@
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import ts from 'typescript';
+const js = ts.transpileModule(readFileSync(new URL('../src/rules.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ES2022}}).outputText;
+const { blocked, resolveHit } = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
+assert.deepEqual(resolveHit(150,12,false,0),{damage:12,hp:138,energy:12});
+assert.deepEqual(resolveHit(150,24,true,90),{damage:36,hp:114,energy:100});
+assert.deepEqual(resolveHit(5,65,true,0),{damage:5,hp:0,energy:5},'Overkill must not grant extra energy');
+assert.deepEqual(resolveHit(0,12,false,12),{damage:0,hp:0,energy:12},'Dead targets give no energy');
+assert.equal(blocked(69,500,20,[]),true);
+assert.equal(blocked(700,710,20,[]),false);
+const obstacles=[{x:405,y:245,w:125,h:55}];
+assert.equal(blocked(390,270,20,obstacles),true,'Character radius collides before its center');
+assert.equal(blocked(390,270,4,obstacles),false,'Projectiles use smaller radius');
+assert.equal(blocked(450,270,4,obstacles),true,'Walls stop projectiles');
+console.log('PASS: 8 combat checks (damage, debuff, energy cap, overkill, death, walls, projectile clearance).');

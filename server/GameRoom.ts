@@ -3,7 +3,7 @@ import {getCharacter} from '../src/shared/characters/CharacterDatabase';
 import type {MBTIType} from '../src/shared/characters/CharacterDefinition';
 import {addStatus,status} from './combat/StatusEffects';
 import { blocked } from '../src/rules';
-import { generateTerrain } from '../src/terrain';
+import { generateTerrain,insideMud,TERRAIN_CONFIG,SpawnManager } from '../src/terrain';
 import { NET } from '../src/shared/GameConstants';
 import { movement } from '../src/shared/Movement';
 import { applyDamage,meleeTargets } from './combat/CombatResolver';
@@ -11,7 +11,7 @@ import type { AttackDefinition,CombatEvent,DamageEvent } from '../src/shared/com
 import type { GameSnapshot, NetworkPlayerState, PlayerInput, NetworkProjectile, NetworkZone } from '../src/shared/NetworkProtocol';
 const zero:PlayerInput={seq:0,moveX:0,moveY:0,aimAngle:0,basicAttackPressed:false,skillPressed:false,ultimatePressed:false};
 export class GameRoom {
- constructor(readonly capacity:number=NET.maxPlayers){}
+ constructor(readonly capacity:number=NET.maxPlayers,private terrainOptions:import('../src/terrain').TerrainOptions={}){}
  combatEnabled=true;
  skills=new SkillSystem(this);zones:NetworkZone[]=[];
  map=generateTerrain();tick=0;round=0;projectiles:NetworkProjectile[]=[];
@@ -22,7 +22,7 @@ export class GameRoom {
  rate=new Map<string,{start:number;count:number}>();
  add(socketId:string,nickname:string,mbti:MBTIType='ENTP',playerId?:string){
   if(this.players.size>=this.capacity)return undefined;
-  if(this.players.size===0){this.map=generateTerrain();this.tick=0;this.projectiles=[];this.events=[];this.hits=[];this.zones=[];this.skills.reset();this.nextResetTick=0;}
+  if(this.players.size===0){this.map=generateTerrain({...this.terrainOptions,playerCount:this.terrainOptions.playerCount??this.capacity});this.tick=0;this.projectiles=[];this.events=[];this.hits=[];this.zones=[];this.skills.reset();this.nextResetTick=0;}
   const id=playerId||Array.from({length:this.capacity},(_,i)=>`P${i+1}`).find(id=>!this.players.has(id))!;
   const spawn=this.spawn(id);const definition=getCharacter(mbti);
   const player:NetworkPlayerState={id,nickname,mbti,...spawn,aimAngle:-Math.PI/2,movementState:'idle',hp:definition.maxHp,maxHp:definition.maxHp,alive:true,personality:0,personalityMax:NET.personalityMax,velocityX:0,velocityY:0,lastAckSeq:0,basicAttackCooldownRemaining:0,lastAttackTick:-999,skillCooldownRemaining:0,grievance:0,moveSpeed:definition.moveSpeed,dashSpeed:0,dashAngle:0,dashUntilTick:0,statuses:[]};
@@ -52,7 +52,7 @@ export class GameRoom {
   this.events.push({type:'attack',id:++this.eventId,round:this.round,tick:this.tick,attackerId:player.id,x:player.x,y:player.y,aimAngle:player.aimAngle,kind:definition.kind});
   if(definition.kind==='melee'){
    const targets=meleeTargets(player,this.players.values(),definition,this.map);for(const target of targets)this.damage(player,target,definition.damage,Math.cos(player.aimAngle)*definition.knockback,Math.sin(player.aimAngle)*definition.knockback,true,'basic');this.skills.multiBonus(player,targets.length,false);
-  }else this.projectiles.push({id:++this.projectileId,ownerId:player.id,x:player.x,y:player.y,vx:Math.cos(player.aimAngle)*definition.projectileSpeed,vy:Math.sin(player.aimAngle)*definition.projectileSpeed,expiresTick:this.tick+Math.ceil(definition.lifetimeMs/1000*NET.tickRate),damage:definition.damage,radius:definition.projectileRadius,knockback:definition.knockback,source:'basic',explosive:!!status(player,'explosive'),wobble:player.mbti==='INTP'?.07:undefined,angle:player.aimAngle,baseSpeed:definition.projectileSpeed});
+  }else this.projectiles.push({id:++this.projectileId,ownerId:player.id,x:player.x,y:player.y,vx:Math.cos(player.aimAngle)*definition.projectileSpeed,vy:Math.sin(player.aimAngle)*definition.projectileSpeed,expiresTick:this.tick+Math.ceil(definition.lifetimeMs/1000*NET.tickRate),damage:definition.damage,radius:definition.projectileRadius,knockback:definition.knockback,source:'basic',canPenetrateObstacle:definition.canPenetrateObstacle,explosive:!!status(player,'explosive'),wobble:player.mbti==='INTP'?.07:undefined,angle:player.aimAngle,baseSpeed:definition.projectileSpeed});
  }
  step(now=performance.now()){
   this.tick++;this.skills.prepare();
@@ -72,10 +72,14 @@ export class GameRoom {
    const steps=Math.max(1,Math.ceil(Math.hypot(shot.vx,shot.vy)/NET.tickRate/8));
    for(let i=0;i<steps&&shot.expiresTick>this.tick;i++){
     shot.x+=shot.vx/NET.tickRate/steps;shot.y+=shot.vy/NET.tickRate/steps;
-    if(blocked(shot.x,shot.y,shot.radius,this.map.walls)){shot.expiresTick=this.tick;break;}
+    if(blocked(shot.x,shot.y,shot.radius,shot.canPenetrateObstacle?[]:this.map.walls)){shot.expiresTick=this.tick;break;}
     const target=[...this.players.values()].find(p=>p.id!==shot.ownerId&&p.alive&&Math.hypot(p.x-shot.x,p.y-shot.y)<24+shot.radius);
     if(target){const attacker=this.players.get(shot.ownerId);if(attacker&&this.skills.allowProjectileHit(shot,target.id)){const speed=Math.hypot(shot.vx,shot.vy);this.damage(attacker,target,shot.damage,shot.vx/speed*shot.knockback,shot.vy/speed*shot.knockback,!shot.noEnergy,shot.turret?'turret':shot.source);if(shot.explosive){for(const other of this.players.values())if(other.id!==target.id&&other.id!==attacker.id&&other.alive&&Math.hypot(other.x-shot.x,other.y-shot.y)<85)this.damage(attacker,other,4,0,0,false,'ultimate');}}if(target.alive&&shot.debuffDuration)addStatus(target,'vulnerable',this.tick+Math.ceil(shot.debuffDuration*NET.tickRate),shot.debuffStrength||1.15);shot.expiresTick=this.tick;}
    }
+  }
+  if(this.combatEnabled)for(const target of this.players.values())if(target.alive&&(this.map.toxic||[]).some(area=>insideMud(target.x,target.y,area))){
+   const actual=applyDamage(target,target,target.maxHp*TERRAIN_CONFIG.toxicDps/NET.tickRate,0,0,false,true);
+   if(actual){const event:DamageEvent={type:'damage',id:++this.eventId,round:this.round,tick:this.tick,attackerId:'environment',targetId:target.id,x:target.x,y:target.y,damage:actual,knockbackX:0,knockbackY:0,source:'environment'};this.events.push(event);this.hits.push(event);if(!target.alive)this.events.push({type:'death',id:++this.eventId,round:this.round,tick:this.tick,attackerId:'environment',targetId:target.id,x:target.x,y:target.y,source:'environment'});}
   }
   this.skills.zones();this.projectiles=this.projectiles.filter(p=>p.expiresTick>this.tick);this.hits=this.hits.filter(h=>h.tick>this.tick-NET.tickRate);
  }
@@ -85,13 +89,10 @@ export class GameRoom {
   for(const [id,p] of this.players){Object.assign(p,this.spawn(id),{hp:p.maxHp,alive:true,personality:0,grievance:0,shield:0,statuses:[],moveSpeed:getCharacter(p.mbti).moveSpeed,dashSpeed:0,dashUntilTick:0,velocityX:0,velocityY:0,lastAttackTick:-999,basicAttackCooldownRemaining:0,skillCooldownRemaining:0,movementState:'idle'});this.nextAttack.set(id,this.tick);this.inputs.set(id,{input:{...zero,seq:this.inputs.get(id)?.input.seq||0},time:0});}
  }
  spawn(id:string){
-  if(this.capacity===NET.maxPlayers&&/^P[1-4]$/.test(id))return [{x:700,y:710},{x:300,y:340},{x:1100,y:340},{x:1080,y:660}][Number(id.slice(1))-1];
-  const slot=this.players.size,angle=-Math.PI/2+slot/this.capacity*Math.PI*2;
-  const wanted={x:700+Math.cos(angle)*470,y:480+Math.sin(angle)*220};
-  for(let radius=0;radius<500;radius+=35)for(let i=0;i<24;i++){
-   const p={x:wanted.x+Math.cos(i/24*Math.PI*2)*radius,y:wanted.y+Math.sin(i/24*Math.PI*2)*radius};
-   if(!blocked(p.x,p.y,30,this.map.walls)&&![...this.players.values()].some(other=>Math.hypot(other.x-p.x,other.y-p.y)<100))return p;
-  }
+  const points=this.map.spawns||SpawnManager.select(this.capacity);
+  const occupied=[...this.players.values()].filter(p=>p.id!==id);
+  const point=points.find(p=>!occupied.some(other=>Math.hypot(other.x-p.x,other.y-p.y)<70));
+  if(point)return {...point};
   throw new Error('No safe spawn available');
  }
  snapshot():GameSnapshot{return {round:this.round,tick:this.tick,players:[...this.players.values()].map(p=>({...p,statuses:p.statuses.map(s=>({...s}))})),zones:this.zones.map(z=>({...z})),projectiles:this.projectiles.map(p=>({...p}))};}

@@ -61,7 +61,7 @@ export class SkillSystem {
  execute(p:Player,skill:SkillDefinition,input:PlayerInput,ultimate:boolean){
   const d=skill.params,m=this.memory(p.id),now=this.room.tick;this.castEvent(p,skill.id,ultimate,skill.primitive==='turret'?45:d.radius||65);
   if(skill.primitive==='projectile'){
-   const b=getCharacter(p.mbti).basicAttack;this.room.projectiles.push({id:++this.room.projectileId,ownerId:p.id,x:p.x,y:p.y,vx:Math.cos(input.aimAngle)*b.projectileSpeed,vy:Math.sin(input.aimAngle)*b.projectileSpeed,expiresTick:now+ticks(b.lifetimeMs/1000),damage:d.damage,radius:12,knockback:180,source:'skill',debuffDuration:d.duration,debuffStrength:d.vulnerability});
+   const b=getCharacter(p.mbti).basicAttack;this.room.projectiles.push({id:++this.room.projectileId,ownerId:p.id,x:p.x,y:p.y,vx:Math.cos(input.aimAngle)*b.projectileSpeed,vy:Math.sin(input.aimAngle)*b.projectileSpeed,expiresTick:now+ticks(b.lifetimeMs/1000),damage:d.damage,radius:12,knockback:180,source:'skill',canPenetrateObstacle:getCharacter(p.mbti).skill.canPenetrateObstacle,debuffDuration:d.duration,debuffStrength:d.vulnerability});
   }else if(skill.primitive==='teleport'){
    if(m.marker){const old={x:p.x,y:p.y},destination=m.marker;m.marker=undefined;this.room.zones=this.room.zones.filter(z=>z.ownerId!==p.id||z.kind!=='chess');if(!blocked(destination.x,destination.y,20,this.room.map.walls)){p.x=destination.x;p.y=destination.y;p.velocityX=p.velocityY=0;}this.zone(p,{...skill,id:'chess-blast',params:{damage:d.damage,radius:d.radius}},false,old);}
    else {m.marker={x:p.x,y:p.y,until:now+ticks(d.duration)};this.zone(p,skill,false,p,{endTick:now+ticks(d.duration),pulsesLeft:0});}
@@ -95,7 +95,7 @@ export class SkillSystem {
    if(d.interval)this.zone(p,skill,ultimate,p,{follow:true});
   }else if(skill.primitive==='dash')this.dash(p,input.aimAngle,d.speed,d.duration);
   else {
-   if(skill.id==='speech'){const group=this.room.eventId;const base=getCharacter(p.mbti).basicAttack;for(let i=0;i<d.pulses;i++){const angle=i/d.pulses*Math.PI*2;this.room.projectiles.push({id:++this.room.projectileId,ownerId:p.id,x:p.x,y:p.y,vx:Math.cos(angle)*base.projectileSpeed,vy:Math.sin(angle)*base.projectileSpeed,expiresTick:now+ticks(1.6),damage:d.damage,radius:8,knockback:d.knockback,source:'skill',noEnergy:true,hitGroup:group,hitCap:d.hitCap});}return;}
+   if(skill.id==='speech'){const group=this.room.eventId;const base=getCharacter(p.mbti).basicAttack;for(let i=0;i<d.pulses;i++){const angle=i/d.pulses*Math.PI*2;this.room.projectiles.push({id:++this.room.projectileId,ownerId:p.id,x:p.x,y:p.y,vx:Math.cos(angle)*base.projectileSpeed,vy:Math.sin(angle)*base.projectileSpeed,expiresTick:now+ticks(1.6),damage:d.damage,radius:8,knockback:d.knockback,source:'skill',canPenetrateObstacle:skill.canPenetrateObstacle,noEnergy:true,hitGroup:group,hitCap:d.hitCap});}return;}
    if(skill.id==='prediction'){for(const t of this.nearby(p,d.range).slice(0,d.maxTargets)){const input=this.room.inputs.get(t.id)?.input;const predicted=this.point(t,{...input!,aimAngle:0,targetX:t.x+(input?.moveX||0)*t.moveSpeed*d.lead,targetY:t.y+(input?.moveY||0)*t.moveSpeed*d.lead},300);this.zone(p,skill,true,predicted,{targetId:t.id});}return;}
    if(skill.id==='judgment'){const target=m.mark&&this.room.players.get(m.mark.id);if(target)this.zone(p,skill,true,target);return;}
    let damage=d.damage;if(skill.id==='emotion'){damage=Math.min(d.damageCap,d.damage+(p.maxHp-p.hp)*d.missingHp+p.grievance*d.grievance);p.grievance=0;}
@@ -142,7 +142,7 @@ export class SkillSystem {
    if(zone.pulsesLeft<=0||this.room.tick<zone.nextPulseTick||this.room.tick>zone.endTick)continue;
    if(zone.kind==='turret'||zone.kind==='mega'){
     const target=this.nearby(zone,zone.radius).filter(t=>t.id!==owner.id&&this.visible(zone,t)).sort((a,b)=>Math.hypot(a.x-zone.x,a.y-zone.y)-Math.hypot(b.x-zone.x,b.y-zone.y))[0];
-    if(target){const angle=Math.atan2(target.y-zone.y,target.x-zone.x),speed=getCharacter(owner.mbti)[zone.ultimate?'ultimate':'skill'].params.projectileSpeed;this.room.projectiles.push({id:++this.room.projectileId,ownerId:owner.id,x:zone.x,y:zone.y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,expiresTick:this.room.tick+ticks(1.3),damage:zone.damage,radius:5,knockback:70,source:'skill',turret:true,noEnergy:zone.ultimate});}
+    if(target){const angle=Math.atan2(target.y-zone.y,target.x-zone.x),speed=getCharacter(owner.mbti)[zone.ultimate?'ultimate':'skill'].params.projectileSpeed;this.room.projectiles.push({id:++this.room.projectileId,ownerId:owner.id,x:zone.x,y:zone.y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,expiresTick:this.room.tick+ticks(1.3),damage:zone.damage,radius:5,knockback:70,source:'skill',canPenetrateObstacle:getCharacter(owner.mbti)[zone.ultimate?'ultimate':'skill'].canPenetrateObstacle,turret:true,noEnergy:zone.ultimate});}
    }else{
     let count=0;
     for(const target of this.room.players.values()){

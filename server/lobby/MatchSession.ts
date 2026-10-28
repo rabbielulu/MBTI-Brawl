@@ -9,13 +9,13 @@ export class MatchSession {
  readonly game:GameRoom;readonly players=new Map<string,MatchPlayer>();readonly grace=new Map<string,number>();
  private lastEventId=0;private identities:LobbyPlayer[];result?:MatchResult;endedAt?:number;resultAt?:number;
  phase:MatchPhase='COUNTDOWN';winnerId?:string;draw=false;
- constructor(players:LobbyPlayer[],readonly startAt:number,capacity:number,readonly practice=false){
-  this.identities=players.map(p=>({...p}));this.game=new GameRoom(capacity);
+ constructor(players:LobbyPlayer[],readonly startAt:number,capacity:number,readonly practice=false,terrainOptions:import('../../src/terrain').TerrainOptions={}){
+  this.identities=players.map(p=>({...p}));this.game=new GameRoom(capacity,{...terrainOptions,playerCount:players.length});
   for(const p of players){const actor=this.game.add(p.id,p.nickname,p.mbti,p.id)!;this.players.set(p.id,{id:p.id,alive:true,connected:p.connected,hp:actor.hp,personality:0,kills:0,damageDealt:0,damageTaken:0,distanceMoved:0,skillUses:0,ultimateUses:0,attackTargets:{}});}
   this.bots=new Set(players.filter(p=>p.bot).map(p=>p.id));this.botController=new BotController(this.game,this.bots);
   this.game.combatEnabled=false;
  }
- get protectionEnd(){return this.startAt+2000;}
+ get protectionEnd(){return this.startAt;}
  input(id:string,input:PlayerInput){if(this.phase==='PLAYING'&&this.players.get(id)?.connected&&this.players.get(id)?.alive)this.game.input(id,input);}
  disconnect(id:string,now:number){const p=this.players.get(id);if(!p)return;p.connected=false;this.grace.set(id,now+10000);this.game.inputs.get(id)!.time=-Infinity;}
  reconnect(id:string){const p=this.players.get(id);if(p){p.connected=true;this.grace.delete(id);}}
@@ -49,7 +49,7 @@ export class MatchSession {
    if(event.id<=this.lastEventId)continue;this.lastEventId=event.id;
    if(event.type==='damage'){const p=this.players.get(event.attackerId);if(p){p.damageDealt+=event.damage;p.attackTargets??={};p.attackTargets[event.targetId]=(p.attackTargets[event.targetId]||0)+1;}const victim=this.players.get(event.targetId);if(victim)victim.damageTaken=(victim.damageTaken||0)+event.damage;}
    if(event.type==='cast'&&!/^(idea|hobby|ponder)-[0-4]$/.test(event.skillId)){const p=this.players.get(event.attackerId);if(p){if(event.ultimate)p.ultimateUses=(p.ultimateUses||0)+1;else p.skillUses=(p.skillUses||0)+1;}}
-   if(event.type==='death')this.eliminate(event.targetId,'killed',now,event.attackerId);
+   if(event.type==='death')this.eliminate(event.targetId,event.source==='environment'?'environment':'killed',now,event.source==='environment'?undefined:event.attackerId);
   }
   for(const [id,p] of this.players){const actor=this.game.players.get(id)!;p.hp=actor.hp;p.personality=actor.personality;const old=before.get(id)!;p.distanceMoved=(p.distanceMoved||0)+Math.hypot(actor.x-old.x,actor.y-old.y);}
   this.resolve(now);

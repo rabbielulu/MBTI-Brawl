@@ -1,3 +1,4 @@
+import {TERRAIN_PROFILES,type TerrainOptions} from '../../src/terrain';
 import {randomUUID} from 'node:crypto';
 import {NET} from '../../src/shared/GameConstants';
 import type {Server,Namespace} from 'socket.io';
@@ -37,7 +38,9 @@ export function installLobby(io:Server,port:()=>number){
   socket.on('room:createPractice',(request,ack)=>reply(ack,()=>{
    if(membership)throw new LobbyError('ALREADY_IN_ROOM','请先退出当前房间。');const identity=validateIdentity(request?.identity),count=request?.botCount;
    if(!Number.isInteger(count)||count<2||count>7)throw new LobbyError('NOT_ENOUGH_PLAYERS','试炼场请选择 2–7 个机器人对手。');
-   const now=Date.now(),room=registry.create(now);room.mode='practice';const player=room.join(identity,now);for(let i=0;i<count;i++)room.addBot(now);room.resetPractice(now);
+   const raw=request.terrain as Record<string,unknown>|undefined,terrain:TerrainOptions={};
+   if(raw){if(raw.seed!==undefined){if(!Number.isInteger(raw.seed)||Number(raw.seed)<0||Number(raw.seed)>4294967295)throw new LobbyError('INVALID_ROOM_ID','地形种子请输入 0–4294967295 的整数。');terrain.seed=Number(raw.seed);}if(raw.profile!==undefined){if(typeof raw.profile!=='string'||!Object.hasOwn(TERRAIN_PROFILES,raw.profile))throw new LobbyError('INVALID_ROOM_ID','请选择有效地形组合。');terrain.profile=raw.profile as TerrainOptions['profile'];}}
+   const now=Date.now(),room=registry.create(now);room.mode='practice';room.terrainOptions=terrain;const player=room.join(identity,now);for(let i=0;i<count;i++)room.addBot(now);room.resetPractice(now);
    membership={room,playerId:player.id};credentials.set(player.id,randomUUID());socket.data.lobbyPlayerId=player.id;socket.join(room.id);broadcast(room);return success();
   }));
   socket.on('practice:reset',(_request,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入试炼场。');membership.room.resetPractice(Date.now());broadcast(membership.room);return success();}));

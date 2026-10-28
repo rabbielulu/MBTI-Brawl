@@ -21,8 +21,8 @@ try{
  for(let i=1;i<8;i++){const c=await connect(),r=await request(c,'room:join',{roomId:room.id,identity:{mbti:'ENTP',nickname:`乙${i}`}});assert.ok(r.ok);ids.push(r.playerId);members.push(c);if(i===1)resume=r;}
  await until(()=>!!welcome,6500);assert.equal(welcome!.id,ids[0]);assert.equal(welcome!.snapshot.players.length,8);assert.equal(welcomes,1);assert.equal(room.phase,'COUNTDOWN');
  const game=room.match!.game;const p=game.players.get(ids[0])!;const x=p.x;members[0].emit('match:input',{seq:1,moveX:1,moveY:0,aimAngle:0,basicAttackPressed:true,skillPressed:true,ultimatePressed:true});await wait(80);assert.equal(p.x,x,'Countdown ignores gameplay');
- await until(()=>room.phase==='PLAYING',4000);assert.equal(game.combatEnabled,false);p.x=600;p.y=500;game.map.walls=[];const victim=game.players.get(ids[1])!;victim.x=660;victim.y=500;
- a.emit('match:input',{seq:2,moveX:1,moveY:0,aimAngle:0,basicAttackPressed:true,skillPressed:true,ultimatePressed:false});await wait(150);assert.ok(p.x>600);assert.equal(victim.hp,victim.maxHp);assert.equal(game.projectiles.length,0);assert.equal(game.zones.length,0);
+ await until(()=>room.phase==='PLAYING',6000);assert.equal(game.combatEnabled,true);p.x=600;p.y=500;game.map.walls=[];game.map.mud=[];game.map.toxic=[];const victim=game.players.get(ids[1])!;victim.x=660;victim.y=500;
+ a.emit('match:input',{seq:2,moveX:1,moveY:0,aimAngle:0,basicAttackPressed:false,skillPressed:false,ultimatePressed:false});await wait(150);assert.ok(p.x>600);assert.equal(victim.hp,victim.maxHp);assert.equal(game.projectiles.length,0);assert.equal(game.zones.length,0);
  // Same seat is recovered with a secret token, not by claiming a player ID.
  members[1].io.engine.close();await until(()=>room.match!.players.get(ids[1])!.connected===false);
  const thief=await connect(),denied=await request(thief,'room:resume',{roomId:room.id,playerId:ids[1],token:'wrong'});assert.ok(!denied.ok);
@@ -43,5 +43,5 @@ try{
  await until(()=>receivedResult,8000);assert.equal(room.phase,'RESULT');assert.equal(game.tick,finalTick);assert.equal(JSON.stringify(room.match!.result),final,'M4 stats stay frozen after champion leaves');
  const round=game.round;(a as any).emit('resetTraining');await wait(120);assert.equal(game.round,round);assert.equal(leak,false);assert.equal(host.room.players.size,0);assert.ok(snapshot&&snapshot.players.length===8);
  await new Promise<void>(resolve=>a.emit('room:leave',resolve));await new Promise<void>(resolve=>recovered.emit('room:leave',resolve));assert.equal(host.lobby.rooms.has(room.id),false);
- console.log('PASS M2 real network: 8 seats → 3s → protected play → lethal attack → placement → winner; isolated snapshots/events, authenticated recovery, dead-input rejection, no training reset, M3 zero spectator packets, M4 timed celebration/result/frozen champion and cleanup.');
+ console.log('PASS M2 real network: 8 seats → overview/countdown → live combat → lethal attack → placement → winner; isolated snapshots/events, authenticated recovery, dead-input rejection, no training reset, M3 zero spectator packets, M4 timed celebration/result/frozen champion and cleanup.');
 }finally{clients.forEach(c=>c.disconnect());host.close();}

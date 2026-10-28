@@ -24,7 +24,7 @@ export class LobbyClient {
    this.resumeToken=response.resumeToken;this.playerId=response.playerId;this.inviteUrl=response.inviteUrl;this.receive(response.room);resolve();
   });
  });}
- async enter(identity:PlayerIdentity,roomId?:string,botCount?:number){
+ async enter(identity:PlayerIdentity,roomId?:string,botCount?:number,terrain?:{seed?:number;profile?:string}){
   this.close();this.intentional=false;
   const socket:Socket<LobbyServerEvents,LobbyClientEvents>=this.socket=io('/lobby',{auth:{protocolVersion:PROTOCOL_VERSION},reconnection:false,timeout:5000,autoConnect:false});
   socket.on('room:update',room=>this.receive(room));
@@ -38,7 +38,7 @@ export class LobbyClient {
    if(this.room?.match){this.resumeUntil=Date.now()+9500;const reconnect=()=>{if(this.intentional||this.socket!==socket||!this.resumeUntil)return;if(Date.now()>=this.resumeUntil){this.resumeUntil=0;this.disconnected('未能恢复连接，席位可能已失效。请退出本局后重新创建房间。');return;}socket.connect();this.retry=setTimeout(reconnect,1000);};this.retry=setTimeout(reconnect,250);}
   });
   await new Promise<void>((resolve,reject)=>{this.pending.add(reject);socket.once('connect',()=>{this.pending.delete(reject);resolve();});socket.once('connect_error',error=>{if(this.resumeUntil)return;this.pending.delete(reject);reject(new Error(error.message.includes('版本')?error.message:'连接失败，请确认 Host 已启动，再重新进入房间。'));if(this.socket===socket)this.close();});socket.connect();});
-  try{await this.request(botCount!==undefined?'room:createPractice':roomId?'room:join':'room:create',botCount!==undefined?{identity,botCount}:roomId?{roomId,identity}:identity);}catch(error){if(this.socket===socket)this.close();throw error;}
+  try{await this.request(botCount!==undefined?'room:createPractice':roomId?'room:join':'room:create',botCount!==undefined?{identity,botCount,terrain}:roomId?{roomId,identity}:identity);}catch(error){if(this.socket===socket)this.close();throw error;}
  }
  resetPractice(){return this.request('practice:reset',{});}
  rematch(){return this.request('room:rematch',{endedAt:this.room?.match?.result?.endedAt});}

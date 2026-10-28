@@ -8,7 +8,7 @@ export const FULL_ROOM_COUNTDOWN_MS=5_000;
 export type MatchPhase='LOBBY'|'COUNTDOWN'|'PLAYING'|'WINNER'|'RESULT'|'CANCELLED';
 export interface PlayerIdentity {mbti:MBTIType;nickname:string}
 export interface LobbyPlayer extends PlayerIdentity {id:string;slot:number;connected:boolean;joinedAt:number;bot?:boolean}
-export interface MatchPlayer {id:string;alive:boolean;connected:boolean;hp:number;personality:number;kills:number;damageDealt:number;placement?:number;eliminationReason?:'killed'|'quit'|'disconnect';eliminatedAt?:number;killerId?:string;damageTaken?:number;distanceMoved?:number;skillUses?:number;ultimateUses?:number;attackTargets?:Record<string,number>;survivalMs?:number}
+export interface MatchPlayer {id:string;alive:boolean;connected:boolean;hp:number;personality:number;kills:number;damageDealt:number;placement?:number;eliminationReason?:'killed'|'quit'|'disconnect'|'environment';eliminatedAt?:number;killerId?:string;damageTaken?:number;distanceMoved?:number;skillUses?:number;ultimateUses?:number;attackTargets?:Record<string,number>;survivalMs?:number}
 export interface ResultPlayer extends PlayerIdentity {id:string;bot:boolean;placement:number;kills:number;damageDealt:number;survivalMs:number;damageTaken:number;distanceMoved:number;skillUses:number;ultimateUses:number}
 export interface FunAward {id:'kills'|'damage'|'distance'|'focus'|'taken';icon:string;title:string;playerIds:string[];value:number;unit:string}
 export interface MatchResult {startedAt:number;endedAt:number;winnerId?:string;draw:boolean;players:ResultPlayer[];awards:FunAward[]}
@@ -17,7 +17,7 @@ export interface LobbyRoomState {id:string;mode?:'brawl'|'practice';maxPlayers:n
 export type LobbyErrorCode='INVALID_ROOM_ID'|'ROOM_NOT_FOUND'|'ROOM_FULL'|'MATCH_ALREADY_STARTED'|'INVALID_MBTI'|'INVALID_NICKNAME'|'ALREADY_IN_ROOM'|'NOT_IN_ROOM'|'RATE_LIMITED'|'NOT_ENOUGH_PLAYERS';
 export type LobbyReply={ok:true;playerId:string;room:LobbyRoomState;inviteUrl:string;resumeToken:string}|{ok:false;code:LobbyErrorCode;message:string};
 export interface LobbyClientEvents {
- 'room:createPractice':(request:{identity:unknown;botCount:number},reply:(response:LobbyReply)=>void)=>void;
+ 'room:createPractice':(request:{identity:unknown;botCount:number;terrain?:unknown},reply:(response:LobbyReply)=>void)=>void;
  'practice:reset':(request:unknown,reply:(response:LobbyReply)=>void)=>void;
  'room:rematch':(request:{endedAt:number},reply:(response:LobbyReply)=>void)=>void;
  'room:debugStart':(request:unknown,reply:(response:LobbyReply)=>void)=>void;

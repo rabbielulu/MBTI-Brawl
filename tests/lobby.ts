@@ -9,7 +9,7 @@ assert.deepEqual(validateIdentity({mbti:'INFP',nickname:'  玻璃心  '}),{mbti:
 assert.equal(validateIdentity({mbti:'ESTJ',nickname:'一二三四五六七八九十甲乙'}).nickname.length,12);
 assert.equal(validateIdentity({mbti:'ESTP',nickname:'😀'.repeat(12)}).nickname.length,24);
 for(const nickname of ['', '  ', 'x'.repeat(13), 'a\nb'])rejects(()=>validateIdentity({mbti:'ENTP',nickname}),'INVALID_NICKNAME');
-for(const mbti of ['INTJ','entp','__proto__',null])rejects(()=>validateIdentity({mbti,nickname:'测试'}),'INVALID_MBTI');
+for(const mbti of ['XXXX','entp','__proto__',null])rejects(()=>validateIdentity({mbti,nickname:'测试'}),'INVALID_MBTI');
 assert.equal(validateRoomId(' abcd '),'ABCD');for(const id of ['', 'ABC','A?CD','AAAAA','../x'])rejects(()=>validateRoomId(id),'INVALID_ROOM_ID');
 {
  const r=new LobbyRoom('ABCD',0),a=r.join(identity,1000);assert.equal(r.lobbyCountdownEnd,undefined);r.step(99999);assert.equal(r.phase,'LOBBY');

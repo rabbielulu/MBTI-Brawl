@@ -29,7 +29,7 @@ export function installLobby(io:Server,port:()=>number){
   const reply=(ack:unknown,task:()=>LobbyReply)=>{if(typeof ack!=='function')return;try{guard();ack(task());}catch(error){const failure=error instanceof LobbyError?error:new LobbyError('NOT_IN_ROOM','房间操作失败，请重新进入。');ack({ok:false,code:failure.code,message:failure.message});}};
   const success=():LobbyReply=>({ok:true,playerId:membership!.playerId,room:membership!.room.snapshot(Date.now()),inviteUrl:inviteUrl(socket.handshake.headers.host,membership!.room.id),resumeToken:credentials.get(membership!.playerId)!});
   const leave=(unexpected=false)=>{if(!membership)return;const {room,playerId}=membership;membership=undefined;socket.leave(room.id);if(unexpected&&room.match){room.players.get(playerId)!.connected=false;room.match.disconnect(playerId,Date.now());room.step(Date.now());}else{credentials.delete(playerId);registry.remove(room,playerId,Date.now());if(room.players.has(playerId))room.players.get(playerId)!.connected=false;}
-   if(![...room.players.values()].some(p=>p.connected)&&(!room.match||room.phase==='CANCELLED'||room.phase==='WINNER')){registry.rooms.delete(room.id);for(const p of room.players.values())credentials.delete(p.id);}
+   if(![...room.players.values()].some(p=>p.connected&&!p.bot)&&(!room.match||room.phase==='CANCELLED'||room.phase==='WINNER'||room.phase==='RESULT')){registry.rooms.delete(room.id);for(const p of room.players.values())credentials.delete(p.id);}
    if(room.players.size)broadcast(room);};
   socket.on('room:create',(identity,ack)=>reply(ack,()=>{
    if(membership)throw new LobbyError('ALREADY_IN_ROOM','已经在房间中，请先退出。');const data=validateIdentity(identity),now=Date.now(),room=registry.create(now),player=room.join(data,now);membership={room,playerId:player.id};credentials.set(player.id,randomUUID());socket.data.lobbyPlayerId=player.id;socket.join(room.id);broadcast(room);return success();
@@ -39,6 +39,12 @@ export function installLobby(io:Server,port:()=>number){
    const data=validateIdentity(value.identity),room=registry.get(value.roomId);if(room.step(Date.now()))broadcast(room);const player=room.join(data,Date.now());membership={room,playerId:player.id};credentials.set(player.id,randomUUID());socket.data.lobbyPlayerId=player.id;socket.join(room.id);broadcast(room);return success();
   }));
   socket.on('player:updateIdentity',(identity,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','你已离开房间，请重新加入。');const data=validateIdentity(identity);if(membership.room.step(Date.now()))broadcast(membership.room);membership.room.update(membership.playerId,data,Date.now());broadcast(membership.room);return success();}));
+  socket.on('room:rematch',(request,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入房间。');const room=membership.room;const oldIds=[...room.players.keys()];room.rematch(request?.endedAt,Date.now());for(const id of oldIds)if(!room.players.has(id))credentials.delete(id);broadcast(room);return success();}));
+  socket.on('room:debugStart',(_request,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入房间。');const room=membership.room;if(room.step(Date.now()))broadcast(room);room.debugStart(Date.now());broadcast(room);return success();}));
+  socket.on('room:addBot',(_request,ack)=>reply(ack,()=>{
+   if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入房间，再添加机器人。');
+   const room=membership.room;if(room.step(Date.now()))broadcast(room);room.addBot(Date.now());broadcast(room);return success();
+  }));
   socket.on('room:leave',ack=>{leave();if(typeof ack==='function')ack();});
   socket.on('room:resume',(request,ack)=>reply(ack,()=>{
    if(membership)throw new LobbyError('ALREADY_IN_ROOM','已经在房间中。');
@@ -49,13 +55,13 @@ export function installLobby(io:Server,port:()=>number){
   socket.on('match:input',input=>{if(membership)membership.room.match?.input(membership.playerId,input);});
   socket.on('disconnect',()=>leave(true));
  });
- const announced=new WeakSet<LobbyRoom>();
+ const announced=new WeakSet<object>();
  let frame=0,snapshotClock=0;
  const timer=setInterval(()=>{
   const now=Date.now();frame++;snapshotClock+=NET.snapshotRate;const sendSnapshot=snapshotClock>=NET.tickRate;if(sendSnapshot)snapshotClock-=NET.tickRate;
   for(const room of registry.rooms.values()){
    const changed=room.step(now);
-   if(room.match&&!announced.has(room)){announced.add(room);
+   if(room.match&&!announced.has(room.match)){announced.add(room.match);
     for(const member of namespace.sockets.values()){const id=member.data.lobbyPlayerId;if(member.rooms.has(room.id)&&id)member.emit('match:welcome',welcome(room,id));}
    }
    if(changed||(room.match&&frame%3===0))broadcast(room);

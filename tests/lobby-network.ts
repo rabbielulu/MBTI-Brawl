@@ -13,7 +13,7 @@ try{
  const a=await connect();const identity={mbti:'ENTP',nickname:'同一个昵称'};
  const bad=await request(a,'room:join',{roomId:'????',identity});assert.ok(!bad.ok&&bad.code==='INVALID_ROOM_ID');
  const missing=await request(a,'room:join',{roomId:'ABCD',identity});assert.ok(!missing.ok&&missing.code==='ROOM_NOT_FOUND');
- const invalid=await request(a,'room:create',{mbti:'INTJ',nickname:'x'});assert.ok(!invalid.ok&&invalid.code==='INVALID_MBTI');
+ const invalid=await request(a,'room:create',{mbti:'XXXX',nickname:'x'});assert.ok(!invalid.ok&&invalid.code==='INVALID_MBTI');
  const invalidNick=await request(a,'room:create',{mbti:'ENTP',nickname:'x'.repeat(13)});assert.ok(!invalidNick.ok&&invalidNick.code==='INVALID_NICKNAME');
  const created=await request(a,'room:create',identity);assert.ok(created.ok);assert.equal(created.room.maxPlayers,8);assert.equal(created.room.lobbyCountdownEnd,undefined);assert.match(created.inviteUrl,new RegExp(`room=${created.room.id}$`));assert.ok(!created.inviteUrl.includes('localhost'),'Local host invitations use a LAN address');
  const states:LobbyRoomState[]=[];a.on('room:update',s=>states.push(s));
@@ -29,7 +29,7 @@ try{
  const locked=await request(a,'player:updateIdentity',identity);assert.ok(!locked.ok&&locked.code==='MATCH_ALREADY_STARTED');assert.equal(leaked,false,'Rooms do not leak updates');
  assert.equal(other.room.players.length,1);
  await new Promise<void>(resolve=>isolation.emit('room:leave',resolve));await until(()=>!host.lobby.rooms.has(other.room.id));
- const rateClient=await connect();let last:LobbyReply|undefined;for(let i=0;i<13;i++)last=await request(rateClient,'room:create',{mbti:'INTJ',nickname:'x'});assert.ok(last&&!last.ok&&last.code==='RATE_LIMITED');
+ const rateClient=await connect();let last:LobbyReply|undefined;for(let i=0;i<13;i++)last=await request(rateClient,'room:create',{mbti:'XXXX',nickname:'x'});assert.ok(last&&!last.ok&&last.code==='RATE_LIMITED');
  const oldVersion:Socket<LobbyServerEvents,LobbyClientEvents>=io(`${base}/lobby`,{auth:{protocolVersion:0},reconnection:false,autoConnect:false});clients.push(oldVersion);const denied=once(oldVersion,'connect_error');oldVersion.connect();const [versionError]=await denied;assert.match(versionError.message,/版本/);
  const page=await fetch(`${base}/?room=${created.room.id}`);assert.equal(page.status,200,'Invite URL serves the application');
  console.log('PASS: real create/join/edit/leave/disconnect, invite URL, 8 seats/full rejection, 30s/reset/real 5s transition, identity validation/ownership, room isolation, late join lock, empty cleanup and isolated battle handoff.');

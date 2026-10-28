@@ -1,7 +1,7 @@
 import {SkillSystem} from './combat/SkillSystem';
 import {getCharacter} from '../src/shared/characters/CharacterDatabase';
 import type {MBTIType} from '../src/shared/characters/CharacterDefinition';
-import {addStatus} from './combat/StatusEffects';
+import {addStatus,status} from './combat/StatusEffects';
 import { blocked } from '../src/rules';
 import { generateTerrain } from '../src/terrain';
 import { NET } from '../src/shared/GameConstants';
@@ -38,20 +38,21 @@ export class GameRoom {
   this.inputs.set(id,{input:{seq:p.seq,moveX:p.moveX,moveY:p.moveY,aimAngle:p.aimAngle%(Math.PI*2),basicAttackPressed:previous.input.basicAttackPressed||p.basicAttackPressed,skillPressed:previous.input.skillPressed||p.skillPressed,ultimatePressed:previous.input.ultimatePressed||p.ultimatePressed,targetX:p.targetX??previous.input.targetX,targetY:p.targetY??previous.input.targetY},time:now});
  }
  remove(id:string){this.skills.remove(id);this.zones=this.zones.filter(z=>z.ownerId!==id);this.players.delete(id);this.inputs.delete(id);this.nextAttack.delete(id);this.rate.delete(id);this.projectiles=this.projectiles.filter(p=>p.ownerId!==id);console.log(`Player disconnected: ${id}`);}
- damage(attacker:NetworkPlayerState,target:NetworkPlayerState,damage:number,kx:number,ky:number,gainEnergy=true){
+ damage(attacker:NetworkPlayerState,target:NetworkPlayerState,damage:number,kx:number,ky:number,gainEnergy=true,source='skill'){
   if(!this.combatEnabled)return;
-  const actual=applyDamage(attacker,target,damage,kx,ky,gainEnergy);if(!actual)return;
+  const actual=applyDamage(attacker,target,this.skills.damageMultiplier(attacker,target,damage,source),kx,ky,gainEnergy);this.skills.onDamage(attacker,target,actual,source,gainEnergy);if(!actual)return;
   const event:DamageEvent={type:'damage',id:++this.eventId,round:this.round,tick:this.tick,attackerId:attacker.id,targetId:target.id,x:target.x,y:target.y,damage:actual,knockbackX:kx,knockbackY:ky};
   this.events.push(event);this.hits.push(event);
   if(!target.alive){this.events.push({type:'death',id:++this.eventId,round:this.round,tick:this.tick,attackerId:attacker.id,targetId:target.id,x:target.x,y:target.y});this.inputs.set(target.id,{input:{...zero,seq:this.inputs.get(target.id)?.input.seq||0},time:0});}
  }
  attack(player:NetworkPlayerState,definition:AttackDefinition=getCharacter(player.mbti).basicAttack){
   if(!this.combatEnabled||!player.alive||this.tick<(this.nextAttack.get(player.id)||0))return;
+  definition=this.skills.basic(player,definition);
   player.lastAttackTick=this.tick;player.basicAttackCooldownRemaining=definition.cooldownMs/1000;this.nextAttack.set(player.id,this.tick+Math.ceil(definition.cooldownMs/1000*NET.tickRate));
   this.events.push({type:'attack',id:++this.eventId,round:this.round,tick:this.tick,attackerId:player.id,x:player.x,y:player.y,aimAngle:player.aimAngle,kind:definition.kind});
   if(definition.kind==='melee'){
-   for(const target of meleeTargets(player,this.players.values(),definition,this.map))this.damage(player,target,definition.damage,Math.cos(player.aimAngle)*definition.knockback,Math.sin(player.aimAngle)*definition.knockback);
-  }else this.projectiles.push({id:++this.projectileId,ownerId:player.id,x:player.x,y:player.y,vx:Math.cos(player.aimAngle)*definition.projectileSpeed,vy:Math.sin(player.aimAngle)*definition.projectileSpeed,expiresTick:this.tick+Math.ceil(definition.lifetimeMs/1000*NET.tickRate),damage:definition.damage,radius:definition.projectileRadius,knockback:definition.knockback,source:'basic'});
+   const targets=meleeTargets(player,this.players.values(),definition,this.map);for(const target of targets)this.damage(player,target,definition.damage,Math.cos(player.aimAngle)*definition.knockback,Math.sin(player.aimAngle)*definition.knockback,true,'basic');this.skills.multiBonus(player,targets.length,false);
+  }else this.projectiles.push({id:++this.projectileId,ownerId:player.id,x:player.x,y:player.y,vx:Math.cos(player.aimAngle)*definition.projectileSpeed,vy:Math.sin(player.aimAngle)*definition.projectileSpeed,expiresTick:this.tick+Math.ceil(definition.lifetimeMs/1000*NET.tickRate),damage:definition.damage,radius:definition.projectileRadius,knockback:definition.knockback,source:'basic',explosive:!!status(player,'explosive'),wobble:player.mbti==='INTP'?.07:undefined,angle:player.aimAngle,baseSpeed:definition.projectileSpeed});
  }
  step(now=performance.now()){
   this.tick++;this.skills.prepare();
@@ -62,17 +63,18 @@ export class GameRoom {
    p.lastAckSeq=input.seq;p.basicAttackCooldownRemaining=Math.max(0,((this.nextAttack.get(id)||0)-this.tick)/NET.tickRate);
    if(!p.alive){p.movementState='idle';continue;}
    if(!this.combatEnabled){input.basicAttackPressed=false;input.skillPressed=false;input.ultimatePressed=false;}
-   this.skills.input(p,input);const before={x:p.x,y:p.y};
+   this.skills.input(p,input);this.skills.modifyInput(p,input);const before={x:p.x,y:p.y};
    const next=movement(p,input,1/NET.tickRate,this.map);p.movementState=Math.hypot(next.x-p.x,next.y-p.y)>.001?'walk':'idle';Object.assign(p,next,{aimAngle:input.aimAngle});this.skills.afterMove(p,before);
    if(input.basicAttackPressed)this.attack(p);
   }
   for(const shot of this.projectiles){
+   if(shot.wobble){const angle=(shot.angle||0)+Math.sin(this.tick*.6+shot.id)*shot.wobble;shot.vx=Math.cos(angle)*(shot.baseSpeed||400);shot.vy=Math.sin(angle)*(shot.baseSpeed||400);}
    const steps=Math.max(1,Math.ceil(Math.hypot(shot.vx,shot.vy)/NET.tickRate/8));
    for(let i=0;i<steps&&shot.expiresTick>this.tick;i++){
     shot.x+=shot.vx/NET.tickRate/steps;shot.y+=shot.vy/NET.tickRate/steps;
     if(blocked(shot.x,shot.y,shot.radius,this.map.walls)){shot.expiresTick=this.tick;break;}
     const target=[...this.players.values()].find(p=>p.id!==shot.ownerId&&p.alive&&Math.hypot(p.x-shot.x,p.y-shot.y)<24+shot.radius);
-    if(target){const attacker=this.players.get(shot.ownerId);if(attacker){const speed=Math.hypot(shot.vx,shot.vy);this.damage(attacker,target,shot.damage,shot.vx/speed*shot.knockback,shot.vy/speed*shot.knockback);}if(target.alive&&shot.debuffDuration)addStatus(target,'vulnerable',this.tick+Math.ceil(shot.debuffDuration*NET.tickRate),1.5);shot.expiresTick=this.tick;}
+    if(target){const attacker=this.players.get(shot.ownerId);if(attacker&&this.skills.allowProjectileHit(shot,target.id)){const speed=Math.hypot(shot.vx,shot.vy);this.damage(attacker,target,shot.damage,shot.vx/speed*shot.knockback,shot.vy/speed*shot.knockback,!shot.noEnergy,shot.turret?'turret':shot.source);if(shot.explosive){for(const other of this.players.values())if(other.id!==target.id&&other.id!==attacker.id&&other.alive&&Math.hypot(other.x-shot.x,other.y-shot.y)<85)this.damage(attacker,other,4,0,0,false,'ultimate');}}if(target.alive&&shot.debuffDuration)addStatus(target,'vulnerable',this.tick+Math.ceil(shot.debuffDuration*NET.tickRate),shot.debuffStrength||1.15);shot.expiresTick=this.tick;}
    }
   }
   this.skills.zones();this.projectiles=this.projectiles.filter(p=>p.expiresTick>this.tick);this.hits=this.hits.filter(h=>h.tick>this.tick-NET.tickRate);
@@ -80,7 +82,7 @@ export class GameRoom {
  drainEvents(){return this.events.splice(0);}
  resetTraining(){
   if(this.tick<this.nextResetTick)return;this.nextResetTick=this.tick+NET.tickRate;this.round++;this.projectiles=[];this.hits=[];this.events=[];this.zones=[];this.skills.reset();
-  for(const [id,p] of this.players){Object.assign(p,this.spawn(id),{hp:p.maxHp,alive:true,personality:0,grievance:0,statuses:[],moveSpeed:getCharacter(p.mbti).moveSpeed,dashSpeed:0,dashUntilTick:0,velocityX:0,velocityY:0,lastAttackTick:-999,basicAttackCooldownRemaining:0,skillCooldownRemaining:0,movementState:'idle'});this.nextAttack.set(id,this.tick);this.inputs.set(id,{input:{...zero,seq:this.inputs.get(id)?.input.seq||0},time:0});}
+  for(const [id,p] of this.players){Object.assign(p,this.spawn(id),{hp:p.maxHp,alive:true,personality:0,grievance:0,shield:0,statuses:[],moveSpeed:getCharacter(p.mbti).moveSpeed,dashSpeed:0,dashUntilTick:0,velocityX:0,velocityY:0,lastAttackTick:-999,basicAttackCooldownRemaining:0,skillCooldownRemaining:0,movementState:'idle'});this.nextAttack.set(id,this.tick);this.inputs.set(id,{input:{...zero,seq:this.inputs.get(id)?.input.seq||0},time:0});}
  }
  spawn(id:string){
   if(this.capacity===NET.maxPlayers&&/^P[1-4]$/.test(id))return [{x:700,y:710},{x:300,y:340},{x:1100,y:340},{x:1080,y:660}][Number(id.slice(1))-1];

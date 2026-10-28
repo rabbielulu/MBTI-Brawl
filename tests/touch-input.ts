@@ -15,9 +15,9 @@ touch.ultimatePressed=true;assert.equal(touch.read(0,0,true).ultimatePressed,tru
 touch.begin('aim',9);touch.drag('aim',9,1,0);touch.read(0,0,false);touch.end('aim',9);assert.equal(touch.read(0,0,true).basicAttackPressed,false,'Death/blur/modal clears pointers and queued attack');assert.equal(touch.move.pointer,null);
 touch.begin('move',10);touch.drag('move',10,.5,0);assert.equal(touch.read(0,0,true).moveX,.5,'Analog magnitude is preserved');
 let held=true;const desktop=new DesktopInputAdapter(()=>({moveX:1,moveY:1,attack:held}));
-assert.equal(desktop.read(0,0,true).basicAttackPressed,true);assert.equal(desktop.read(100,0,true).basicAttackPressed,false);assert.equal(desktop.read(300,0,true).basicAttackPressed,true);
-held=false;desktop.skill=true;desktop.ultimate=true;const keys=desktop.read(310,0,true);assert.equal(keys.skillPressed,true);assert.equal(keys.ultimatePressed,true);assert.ok(Math.abs(Math.hypot(keys.moveX,keys.moveY)-1)<.001);
-assert.equal(desktop.read(320,0,true).skillPressed,false);assert.equal(desktop.read(400,0,false).moveX,0);
+assert.equal(desktop.read(0,0,true).basicAttackPressed,true);assert.equal(desktop.read(100,0,true).basicAttackPressed,false);assert.equal(desktop.read(360,0,true).basicAttackPressed,true);
+held=false;desktop.skill=true;desktop.ultimate=true;const keys=desktop.read(370,0,true);assert.equal(keys.skillPressed,true);assert.equal(keys.ultimatePressed,true);assert.ok(Math.abs(Math.hypot(keys.moveX,keys.moveY)-1)<.001);
+assert.equal(desktop.read(380,0,true).skillPressed,false);assert.equal(desktop.read(400,0,false).moveX,0);
 console.log('PASS: dead zones, analog/diagonal movement, independent pointers, aim/release/cancel, single events, skills, ultimate, input clearing and desktop regression.');
 
 touch.clear();touch.begin('skill',20);touch.drag('skill',20,.3,.4);assert.equal(touch.targetDistance,.5,'Ground targeting preserves analog range');touch.end('skill',20);assert.equal(touch.read(0,0,true).skillPressed,true);

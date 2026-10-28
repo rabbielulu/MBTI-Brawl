@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {once} from 'node:events';
+import {io} from 'socket.io-client';
+import {LobbyRoom} from '../server/lobby/LobbyRoom';
+import {startServer} from '../server/GameServer';
+import {PROTOCOL_VERSION} from '../src/shared/GameConstants';
+const r=new LobbyRoom('ABCD',0);const a=r.join({mbti:'ENTP',nickname:'保留昵称'},0);for(let i=0;i<7;i++)r.addBot(0);
+assert.throws(()=>r.rematch(1,1));r.debugStart(1);const old=r.match!;old.step(5001);for(const p of [...old.players.values()].slice(1))old.eliminate(p.id,'killed',5100);old.step(5100);r.step(9100);assert.equal(r.phase,'RESULT');const ended=old.result!.endedAt;
+r.rematch(ended,9200);assert.equal(r.phase,'LOBBY');assert.equal(r.players.size,8);assert.equal(r.lobbyCountdownEnd,39200,'Full rematch leaves 30 seconds to change personality');assert.equal(r.match,undefined);assert.equal(r.players.get(a.id)!.nickname,'保留昵称');r.update(a.id,{mbti:'ESTP',nickname:'保留昵称'},9300);r.rematch(ended,9400);assert.equal(r.lobbyCountdownEnd,39200,'Duplicate clicks do not reset deadline');r.step(39200);const fresh=r.match!;assert.notEqual(fresh,old);assert.equal(fresh.game.round,1);assert.equal(fresh.winnerId,undefined);assert.equal(fresh.result,undefined);assert.equal(fresh.grace.size,0);assert.ok([...fresh.players.values()].every(p=>p.alive&&p.hp>0&&p.kills===0&&p.damageDealt===0&&p.placement===undefined));assert.equal(fresh.game.players.get(a.id)!.mbti,'ESTP');
+const solo=new LobbyRoom('EFGH',0);const stay=solo.join({mbti:'ENTP',nickname:'留下'},0),leave=solo.join({mbti:'INFP',nickname:'退出'},0);solo.debugStart(1);solo.remove(leave.id,4000);solo.step(8000);solo.rematch(solo.match!.result!.endedAt,8100);assert.equal(solo.players.size,1);assert.ok(solo.players.has(stay.id));assert.equal(solo.lobbyCountdownEnd,undefined);solo.join({mbti:'ESTJ',nickname:'新朋友'},8200);assert.equal(solo.lobbyCountdownEnd,38200);solo.remove(stay.id,8300);assert.equal(solo.lobbyCountdownEnd,undefined);
+const host=startServer(0),clients:any[]=[];
+try{await once(host.http,'listening');const port=(host.http.address() as any).port;
+ const connect=async()=>{const c=io(`http://127.0.0.1:${port}/lobby`,{auth:{protocolVersion:PROTOCOL_VERSION},autoConnect:false,reconnection:false});clients.push(c);const ready=once(c,'connect');c.connect();await ready;return c;};
+ const req=(c:any,event:string,payload={})=>new Promise<any>((resolve,reject)=>c.timeout(2000).emit(event,payload,(err:any,res:any)=>err?reject(err):resolve(res)));
+ const x=await connect(),y=await connect(),z=await connect();assert.equal((await req(x,'room:rematch',{endedAt:0})).code,'NOT_IN_ROOM');
+ const made=await req(x,'room:create',{mbti:'ENTP',nickname:'甲'}),joined=await req(y,'room:join',{roomId:made.room.id,identity:{mbti:'INFP',nickname:'乙'}});await req(z,'room:join',{roomId:made.room.id,identity:{mbti:'ESTP',nickname:'离开者'}});
+ let welcomes=0;x.on('match:welcome',()=>welcomes++);await req(x,'room:debugStart');await new Promise(resolve=>setTimeout(resolve,70));
+ const room=host.lobby.get(made.room.id),first=room.match!;first.step(Date.now()+5000);first.eliminate(joined.playerId,'killed',Date.now());await new Promise<void>(resolve=>z.emit('room:leave',resolve));room.step(first.resultAt!);assert.equal(room.phase,'RESULT');const stamp=first.result!.endedAt;
+ const responses=await Promise.all([req(x,'room:rematch',{endedAt:stamp}),req(y,'room:rematch',{endedAt:stamp})]);assert.ok(responses.every(v=>v.ok));assert.equal(room.players.size,2);assert.equal(room.players.get(made.playerId)!.nickname,'甲');assert.equal(room.players.get(joined.playerId)!.connected,true);assert.equal(room.match,undefined);
+ await req(y,'player:updateIdentity',{mbti:'ESTJ',nickname:'乙'});await req(x,'room:debugStart');await new Promise(resolve=>setTimeout(resolve,100));assert.equal(welcomes,2,'A fresh welcome is sent for each match in the same room');assert.equal(room.match!.game.players.get(joined.playerId)!.mbti,'ESTJ');assert.ok([...room.match!.players.values()].every(p=>p.alive&&p.kills===0));
+ console.log('PASS M5: same room/IDs, 30s even full, identity change, fresh simulation/round/stats, duplicate race idempotence, disconnected cleanup, second welcome and membership guard.');
+}finally{clients.forEach(c=>c.disconnect());host.close();}

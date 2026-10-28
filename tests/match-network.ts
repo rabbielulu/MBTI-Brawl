@@ -1,3 +1,5 @@
+import {NetworkClient} from '../src/client/network/NetworkClient';
+import {LobbyClient} from '../src/client/lobby/LobbyClient';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {io,type Socket} from 'socket.io-client';
@@ -28,8 +30,18 @@ try{
  await until(()=>game.combatEnabled,3000);p.x=600;p.y=500;victim.x=660;victim.y=500;victim.hp=1;
  a.emit('match:input',{seq:3,moveX:0,moveY:0,aimAngle:0,basicAttackPressed:true,skillPressed:false,ultimatePressed:false});await until(()=>room.match!.players.get(ids[1])!.alive===false);assert.equal(room.match!.players.get(ids[1])!.placement,8);assert.equal(room.match!.players.get(ids[0])!.kills,1);assert.ok(room.match!.players.get(ids[0])!.damageDealt>0);
  const deathX=victim.x;recovered.emit('match:input',{seq:9,moveX:1,moveY:0,aimAngle:0,basicAttackPressed:true,skillPressed:true,ultimatePressed:true});await wait(120);assert.equal(victim.x,deathX);
+ const deadTransport=new LobbyClient(()=>{},()=>{});deadTransport.room=room.snapshot(Date.now());deadTransport.playerId=ids[1];deadTransport.sendInput=input=>recovered.emit('match:input',input);
+ const view=new NetworkClient();view.attach({protocolVersion:PROTOCOL_VERSION,id:ids[1],map:game.map,snapshot:game.snapshot()},deadTransport);
+ let spectatorPackets=0;host.io.of('/lobby').sockets.get(recovered.id!)!.on('match:input',()=>spectatorPackets++);
+ for(let i=0;i<10;i++){view.send(1,0,0,true,true);view.sendIntent({moveX:1,moveY:1,aimAngle:0,basicAttackPressed:true,skillPressed:true,ultimatePressed:true});}
+ await wait(120);assert.equal(spectatorPackets,0,'M3 dead/spectator adapter sends zero real gameplay packets');assert.equal(view.seq,0);view.close();
+
  for(let i=2;i<8;i++)await new Promise<void>(resolve=>members[i].emit('room:leave',resolve));await until(()=>room.phase==='WINNER');assert.equal(room.match!.winnerId,ids[0]);assert.equal(room.match!.players.get(ids[0])!.placement,1);assert.equal(room.match!.players.get(ids[0])!.kills,1);
+ const final=JSON.stringify(room.match!.result),finalTick=game.tick;assert.ok(room.match!.result?.players.every(p=>Number.isFinite(p.survivalMs)));
+ let receivedResult=false;recovered.on('room:update',state=>{if(state.phase==='RESULT'&&state.match?.result?.winnerId===ids[0])receivedResult=true;});
+ await new Promise<void>(resolve=>a.emit('room:leave',resolve));assert.equal(room.match!.winnerId,ids[0]);
+ await until(()=>receivedResult,5500);assert.equal(room.phase,'RESULT');assert.equal(game.tick,finalTick);assert.equal(JSON.stringify(room.match!.result),final,'M4 stats stay frozen after champion leaves');
  const round=game.round;(a as any).emit('resetTraining');await wait(120);assert.equal(game.round,round);assert.equal(leak,false);assert.equal(host.room.players.size,0);assert.ok(snapshot&&snapshot.players.length===8);
  await new Promise<void>(resolve=>a.emit('room:leave',resolve));await new Promise<void>(resolve=>recovered.emit('room:leave',resolve));assert.equal(host.lobby.rooms.has(room.id),false);
- console.log('PASS M2 real network: 8 seats → 3s → protected play → lethal attack → placement → winner; isolated snapshots/events, authenticated recovery, dead-input rejection, no training reset and cleanup.');
+ console.log('PASS M2 real network: 8 seats → 3s → protected play → lethal attack → placement → winner; isolated snapshots/events, authenticated recovery, dead-input rejection, no training reset, M3 zero spectator packets, M4 four-second celebration/result/frozen champion and cleanup.');
 }finally{clients.forEach(c=>c.disconnect());host.close();}

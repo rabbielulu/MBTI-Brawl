@@ -29,7 +29,7 @@ export class MobileInputAdapter extends TouchState {
  }
  bindUltimate(){const button=this.root.querySelector<HTMLButtonElement>('.touch-ultimate')!;
   button.addEventListener('pointerdown',event=>{if(!this.allowed||!this.ultimateAllowed||this.ultimatePointer!==null)return;event.preventDefault();event.stopPropagation();this.targetDistance=1;this.ultimateOrigin={x:event.clientX,y:event.clientY};this.ultimatePointer=event.pointerId;button.setPointerCapture(this.ultimatePointer);});
-  button.addEventListener('pointermove',event=>{if(event.pointerId!==this.ultimatePointer||this.ultimateAimMode!=='position')return;event.preventDefault();const dx=event.clientX-this.ultimateOrigin.x,dy=event.clientY-this.ultimateOrigin.y;if(Math.hypot(dx,dy)>TOUCH.stickTravel*TOUCH.aimDeadZone) {this.angle=Math.atan2(dy,dx);this.targetDistance=Math.min(1,Math.hypot(dx,dy)/TOUCH.stickTravel);}});
+  button.addEventListener('pointermove',event=>{if(event.pointerId!==this.ultimatePointer||this.ultimateAimMode==='none')return;event.preventDefault();const dx=event.clientX-this.ultimateOrigin.x,dy=event.clientY-this.ultimateOrigin.y;if(Math.hypot(dx,dy)>TOUCH.stickTravel*TOUCH.aimDeadZone) {this.angle=Math.atan2(dy,dx);this.targetDistance=Math.min(1,Math.hypot(dx,dy)/TOUCH.stickTravel);}});
   button.addEventListener('pointerup',event=>{if(event.pointerId!==this.ultimatePointer)return;event.preventDefault();event.stopPropagation();if(this.allowed&&this.ultimateAllowed)this.ultimatePressed=true;this.ultimatePointer=null;});
   const cancel=()=>{this.ultimatePointer=null;};button.addEventListener('pointercancel',cancel);button.addEventListener('lostpointercapture',cancel);window.addEventListener('blur',cancel);
  }

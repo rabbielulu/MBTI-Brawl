@@ -15,7 +15,13 @@
     "test:projectiles": "tsx tests/projectile-timeline.ts",
     "test:presentation": "tsx tests/presentation.ts",
     "test:input": "tsx tests/touch-input.ts",
-    "test:match": "tsx tests/match.ts && tsx tests/match-network.ts"
+    "test:match": "tsx tests/match.ts && tsx tests/match-network.ts",
+    "test:spectator": "tsx tests/spectator.ts",
+    "test:bots": "tsx tests/bots.ts && tsx tests/bots-network.ts",
+    "test:results": "tsx tests/results.ts && tsx tests/match-network.ts",
+    "test:debug-start": "tsx tests/debug-start.ts",
+    "test:rematch": "tsx tests/rematch.ts",
+    "test:sixteen": "tsx tests/combat-sixteen.ts && tsx tests/sixteen-network.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0",

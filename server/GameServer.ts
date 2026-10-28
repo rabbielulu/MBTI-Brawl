@@ -26,7 +26,7 @@ export function startServer(port=Number(process.env.PORT)||3000) {
   const raw=socket.handshake.auth.nickname;
   if(typeof raw!=='string'||!raw.trim()||Array.from(raw.trim()).length>7){socket.emit('rejected','请输入最多 7 个字的昵称。');socket.disconnect(true);return;}
   const mbti=socket.handshake.auth.mbti??'ENTP';
-  if(!isPlayable(mbti)){socket.emit('rejected','当前开放 ENTP、INFP、ESTJ、ESTP。');socket.disconnect(true);return;}
+  if(!isPlayable(mbti)){socket.emit('rejected','请选择有效的 16 型 MBTI 人格。');socket.disconnect(true);return;}
   const player=room.add(socket.id,raw.trim(),mbti);
   if(!player){socket.emit('rejected','四人试验场已满，请等待另一名玩家退出。');socket.disconnect(true);return;}
   socket.emit('welcome',{protocolVersion:PROTOCOL_VERSION,id:player.id,map:room.map,snapshot:room.snapshot()});

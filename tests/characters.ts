@@ -10,34 +10,32 @@ function setup(type:MBTIType='ENTP',other:MBTIType='ENTP') {const r=new GameRoom
 function cast(r:GameRoom,id:string,ultimate=false,extra:Partial<PlayerInput>={}) {r.skills.input(r.players.get(id)!,{...idle,skillPressed:!ultimate,ultimatePressed:ultimate,...extra});}
 {
  const {r,a,b}=setup();cast(r,a.id);assert.equal(r.projectiles.length,1);cast(r,a.id);assert.equal(r.projectiles.length,1,'Skill cooldown prevents spam');
- for(let i=0;i<14;i++)r.step(10000);assert.equal(b.hp,80);assert.ok(status(b,'vulnerable'));assert.equal(a.personality,20);
- r.damage(a,b,12,0,0);assert.equal(b.hp,62);assert.equal(a.personality,47,'Debate Me awards 1.5x actual damage');
+ for(let i=0;i<14;i++)r.step(10000);assert.equal(b.hp,92);assert.ok(status(b,'vulnerable'));assert.equal(a.personality,8);
+ r.damage(a,b,12,0,0);assert.equal(b.hp,78);assert.equal(a.personality,25.5,'Debate Me awards 1.25x actual damage');
  r.tick=status(b,'vulnerable')!.untilTick;r.skills.prepare();assert.equal(status(b,'vulnerable'),undefined);
- const n=r.zones.length;cast(r,a.id,true);assert.equal(r.zones.length,n,'Energy below 100 rejects ultimate');
- a.personality=100;cast(r,a.id,true);assert.equal(a.personality,0);assert.equal(r.zones[0].pulsesLeft,3);
- Object.assign(b,{x:550,y:500});for(let pulse=0;pulse<3;pulse++){r.tick=r.zones[0].nextPulseTick;r.skills.zones();}
- assert.equal(b.hp,14);assert.equal(a.personality,0,'Ultimate damage cannot refill its own meter');
+ const n=r.projectiles.length;cast(r,a.id,true);assert.equal(r.projectiles.length,n,'Energy below 100 rejects ultimate');
+ a.personality=100;cast(r,a.id,true);assert.equal(a.personality,0);assert.equal(r.projectiles.length,12,'Speech uses radial projectile barrage');assert.ok(r.projectiles.every(s=>s.noEnergy));
 }
 {
- const {r,a,b}=setup('INFP');cast(r,a.id);r.damage(b,a,20,0,0);assert.equal(a.hp,90);assert.equal(a.grievance,10);
- a.hp=50;r.damage(a,b,10,0,0);assert.equal(a.personality,13.75,'Sensitive scales actual damage by missing HP');
+ const {r,a,b}=setup('INFP');cast(r,a.id);r.damage(b,a,20,0,0);assert.equal(a.hp,86);assert.equal(a.grievance,14);
+ a.hp=50;r.damage(a,b,10,0,0);assert.equal(a.personality,10,'Sensitive only activates below 40% HP');
  a.personality=100;a.grievance=40;cast(r,a.id,true);assert.equal(r.zones[0].damage,70);assert.equal(a.grievance,0);r.skills.zones();assert.equal(b.hp,20);assert.equal(a.personality,0);
- const snapshot=r.snapshot();snapshot.players[0].statuses[0].strength=99;assert.equal(status(a,'reduction')!.strength,.5,'Status snapshots are detached');
+ const snapshot=r.snapshot();snapshot.players[0].statuses[0].strength=99;assert.equal(status(a,'reduction')!.strength,.7,'Status snapshots are detached');
  r.tick=90;r.skills.prepare();assert.equal(status(a,'reduction'),undefined);r.damage(b,a,10,0,0);assert.equal(a.hp,40);assert.equal(a.grievance,0,'Expired shield no longer accumulates');
 }
 {
  const {r,a,b}=setup('ESTJ');const c=r.add('c','丙','ESTP')!;Object.assign(c,{x:590,y:520});cast(r,a.id,false,{targetX:570,targetY:500});assert.equal(r.zones[0].x,570);
- r.tick=89;r.skills.zones();assert.equal(b.hp,100);r.tick=90;r.skills.zones();assert.equal(b.hp,72);assert.equal(c.hp,72);assert.equal(status(b,'slow')!.strength,.65);assert.equal(r.skills.nextSkill.get(a.id),165,'Two-target Deadline refunds 1.5 seconds');
- r.skills.prepare();assert.equal(b.moveSpeed,245*.65);r.tick=150;r.skills.prepare();assert.equal(b.moveSpeed,245);
+ r.tick=89;r.skills.zones();assert.equal(b.hp,100);r.tick=90;r.skills.zones();assert.equal(b.hp,82);assert.equal(c.hp,82);assert.equal(status(b,'slow')!.strength,.75);assert.equal(r.skills.nextSkill.get(a.id),195,'Two-target Deadline refunds half a second');
+ r.skills.prepare();assert.equal(b.moveSpeed,245*.75);r.tick=150;r.skills.prepare();assert.equal(b.moveSpeed,245);
  a.personality=100;cast(r,a.id,true,{targetX:570,targetY:500});const z=r.zones.find(z=>z.kind==='kpi')!;assert.equal(z.pulsesLeft,6);assert.equal(z.endTick-z.startTick,90);
- for(let i=0;i<6;i++){r.tick=z.nextPulseTick;r.skills.zones();}assert.equal(b.hp,12);assert.equal(a.personality,0);
+ for(let i=0;i<6;i++){r.tick=z.nextPulseTick;r.skills.zones();}assert.equal(b.hp,22);assert.equal(a.personality,0);
  r.zones=[];r.tick=500;cast(r,a.id,false,{targetX:99999,targetY:500});assert.equal(r.zones[0].x,680,'Ground targeting clamps to range');
 }
 {
- const {r,a,b}=setup('ESTP');b.x=460;r.attack(a);assert.equal(b.hp,90);assert.equal(r.projectiles.length,0,'ESTP basic uses melee');
- r.tick=30;Object.assign(b,{x:520,y:500,velocityX:0});cast(r,a.id);for(let i=0;i<9;i++)r.step(10000);assert.equal(b.hp,72,'Dash hits only once per target');assert.ok(a.x>=640&&a.x<=670);assert.equal(r.skills.nextSkill.get(a.id),162,'Momentum refunds .6 seconds');
+ const {r,a,b}=setup('ESTP');b.x=460;r.attack(a);assert.equal(b.hp,89);assert.equal(r.projectiles.length,0,'ESTP basic uses melee');
+ r.tick=30;Object.assign(b,{x:520,y:500,velocityX:0});cast(r,a.id);for(let i=0;i<9;i++)r.step(10000);assert.equal(b.hp,75,'Dash hits only once per target');assert.ok(a.x>=640&&a.x<=670);assert.equal(r.skills.nextSkill.get(a.id),165,'Momentum refunds 25 percent');
  a.personality=100;cast(r,a.id,true);assert.ok(status(a,'adrenaline'));cast(r,a.id);assert.equal(r.skills.nextSkill.get(a.id),r.tick+30,'Adrenaline refreshes dash and uses 1s cooldown');
- r.tick=status(a,'adrenaline')!.untilTick;r.skills.prepare();cast(r,a.id);assert.equal(r.skills.nextSkill.get(a.id),r.tick+150,'Normal cooldown resumes after adrenaline expires');
+ r.tick=status(a,'adrenaline')!.untilTick;r.skills.prepare();cast(r,a.id);assert.equal(r.skills.nextSkill.get(a.id),r.tick+180,'Normal cooldown resumes after adrenaline expires');
  const wall=setup('ESTP');wall.r.map.walls=[{x:490,y:400,w:25,h:200}];wall.b.x=535;cast(wall.r,wall.a.id);for(let i=0;i<12;i++)wall.r.step(10000);assert.ok(wall.a.x<=470);assert.equal(wall.a.dashSpeed,0);assert.equal(wall.b.hp,100,'Dash cannot damage through a thin wall');
  const predicted=movement({x:400,y:500,dashSpeed:900,dashAngle:0},{moveX:0,moveY:0},1/30,{walls:[],mud:[]});assert.equal(predicted.x,430,'Client and server use identical dash prediction');
 }

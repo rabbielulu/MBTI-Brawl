@@ -9,7 +9,12 @@ import type { ClientEvents,GameSnapshot,NetworkPlayerState,PlayerInput,ServerEve
 export class NetworkClient {
  lobby?:LobbyClient;
  attach(welcome:Welcome,client:LobbyClient){const seq=this.lobby===client&&this.id===welcome.id?this.seq:0;this.close();this.lobby=client;this.id=welcome.id;this.seq=seq;this.nextSend=0;this.lastHitId=0;this.connected=true;this.status='CONNECTED';this.receive(welcome.snapshot);client.bridge={snapshot:s=>this.receive(s),combat:events=>{for(const e of events)if(e.id>this.lastHitId){this.lastHitId=e.id;this.combatQueue.push(e);}},disconnected:()=>{this.connected=false;this.status='RECONNECTING';}};}
- private emitInput(input:PlayerInput){if(this.lobby)this.lobby.sendInput(input);else this.socket?.emit('input',input);}
+ private canSendInput(){
+  if(!this.connected)return false;
+  if(!this.lobby)return true;
+  return this.lobby.room?.phase==='PLAYING'&&this.local()?.alive===true&&this.lobby.room.match?.players.find(p=>p.id===this.id)?.alive===true;
+ }
+ private emitInput(input:PlayerInput){if(!this.canSendInput())return;if(this.lobby)this.lobby.sendInput(input);else this.socket?.emit('input',input);}
  readonly projectileTimeline=new ProjectileTimeline();
  combatQueue:CombatEvent[]=[]; lastHitId=0; jitter=0;
  socket?:Socket<ServerEvents,ClientEvents>; id=''; connected=false; status='DISCONNECTED';ping=0;tick=0;
@@ -31,8 +36,8 @@ export class NetworkClient {
   });
  }
  receive(value:GameSnapshot){const at=performance.now();this.tick=value.tick;this.projectileTimeline.receive(value,at);this.snapshots.push({at,value});if(this.snapshots.length>40)this.snapshots.shift();}
- send(moveX:number,moveY:number,aimAngle:number,force=false,basicAttackPressed=false){const now=performance.now();if(!this.connected||(!force&&now<this.nextSend))return;this.nextSend=now+1000/NET.inputRate;const input:PlayerInput={seq:++this.seq,moveX,moveY,aimAngle,basicAttackPressed,skillPressed:false,ultimatePressed:false};this.emitInput(input);}
- sendIntent(input:InputIntent){const force=input.basicAttackPressed||input.skillPressed||input.ultimatePressed;const now=performance.now();if(!this.connected||(!force&&now<this.nextSend))return;this.nextSend=now+1000/NET.inputRate;this.emitInput({...input,seq:++this.seq});}
+ send(moveX:number,moveY:number,aimAngle:number,force=false,basicAttackPressed=false){const now=performance.now();if(!this.canSendInput()||(!force&&now<this.nextSend))return;this.nextSend=now+1000/NET.inputRate;const input:PlayerInput={seq:++this.seq,moveX,moveY,aimAngle,basicAttackPressed,skillPressed:false,ultimatePressed:false};this.emitInput(input);}
+ sendIntent(input:InputIntent){const force=input.basicAttackPressed||input.skillPressed||input.ultimatePressed;const now=performance.now();if(!this.canSendInput()||(!force&&now<this.nextSend))return;this.nextSend=now+1000/NET.inputRate;this.emitInput({...input,seq:++this.seq});}
  projectiles(now=performance.now()){return this.projectileTimeline.sample(now);}
  local(){return this.snapshots.at(-1)?.value.players.find(p=>p.id===this.id);}
  remotes(now=performance.now()):NetworkPlayerState[]{

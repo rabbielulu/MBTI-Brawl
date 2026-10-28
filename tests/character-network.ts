@@ -10,7 +10,7 @@ const snapshots:GameSnapshot[][]=[],events:CombatEvent[][]=[];
 async function until(check:()=>boolean){const limit=performance.now()+3000;while(!check()){if(performance.now()>limit)throw new Error('Network condition timeout');await new Promise(r=>setTimeout(r,20));}}
 try{
  await once(host.http,'listening');const address=host.http.address();assert.ok(address&&typeof address==='object');const url=`http://127.0.0.1:${address.port}`;
- for(const [index,mbti] of PLAYABLE_TYPES.entries()){
+ for(const [index,mbti] of PLAYABLE_TYPES.slice(0,4).entries()){
   const socket:Socket<ServerEvents,ClientEvents>=io(url,{auth:{nickname:mbti,mbti},reconnection:false,autoConnect:false});clients.push(socket);snapshots.push([]);events.push([]);
   socket.on('snapshot',s=>snapshots[index].push(s));socket.on('combat',e=>events[index].push(...e));
   const welcome=new Promise<Welcome>(resolve=>socket.once('welcome',resolve));socket.connect();const w=await welcome;assert.equal(w.snapshot.players.find(p=>p.id===w.id)!.mbti,mbti);
@@ -28,6 +28,6 @@ try{
  await until(()=>snapshots.every(list=>list.at(-1)?.players.every(p=>p.personality===0)===true));
  assert.deepEqual(events[0],events[3],'All clients receive identical casts and damage ordering');
  clients[0].emit('resetTraining');await until(()=>snapshots.every(list=>list.at(-1)?.round===1&&list.at(-1)?.players.every(p=>p.hp===100&&p.statuses.length===0&&p.grievance===0)===true));
- const invalid=io(url,{auth:{nickname:'无效',mbti:'INTJ'},reconnection:false});const rejected=once(invalid,'rejected');const [reason]=await rejected;assert.match(reason,/ENTP/);invalid.disconnect();
+ const invalid=io(url,{auth:{nickname:'无效',mbti:'XXXX'},reconnection:false});const rejected=once(invalid,'rejected');const [reason]=await rejected;assert.match(reason,/MBTI/);invalid.disconnect();
  console.log('PASS: four distinct character handshakes, simultaneous authoritative skills/ults, identical cast/damage events, status/zone/cooldown/meter broadcast, four-way reset, invalid character rejection.');
 }finally{clients.forEach(c=>c.disconnect());host.close();}

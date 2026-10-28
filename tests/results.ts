@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import {MatchSession} from '../server/lobby/MatchSession';
 import {buildMatchResult} from '../server/lobby/MatchResults';
-import {CELEBRATION_MS,VICTORY_LINES} from '../src/shared/MatchPresentation';
+import {CELEBRATION_MS,CHAMPION_TIMING as T,VICTORY_LINES} from '../src/shared/MatchPresentation';
 import {formatSurvival} from '../src/client/results/MatchConclusion';
 import type {LobbyPlayer,MatchPlayer} from '../src/shared/LobbyProtocol';
+import {crownArc} from '../src/client/results/ChampionCelebration';
+assert.equal(T.throwAtMs+T.flightMs,T.landAtMs);assert.ok(T.confettiAtMs>=T.landAtMs+T.settleMs);assert.ok(T.sceneMs>T.confettiAtMs+T.confettiMs+500);
+const from={x:900,y:600},to={x:650,y:300};assert.deepEqual(crownArc(from,to,150,0),from);assert.deepEqual(crownArc(from,to,150,1),to);assert.ok(crownArc(from,to,150,.5).y<=300);
 const people=(n=3):LobbyPlayer[]=>Array.from({length:n},(_,slot)=>({id:`user-${slot}`,slot,mbti:'ENTP',nickname:slot===1?'<script>':'同名',connected:true,joinedAt:0}));
 {
  const m=new MatchSession(people(),1000,8);m.step(3000);const [a,b,c]=[...m.game.players.values()];
@@ -13,7 +16,7 @@ const people=(n=3):LobbyPlayer[]=>Array.from({length:n},(_,slot)=>({id:`user-${s
  m.game.damage(a,b,1000,0,0);m.step(3067);assert.equal(m.players.get(a.id)!.damageDealt,100);assert.equal(m.players.get(b.id)!.damageTaken,100);assert.equal(m.players.get(a.id)!.attackTargets![b.id],1);assert.equal(m.players.get(b.id)!.survivalMs,2067);
  m.quit(c.id,4000);assert.equal(m.phase,'WINNER');assert.equal(m.endedAt,4000);assert.equal(m.resultAt,4000+CELEBRATION_MS);assert.equal(m.result!.players[0].id,a.id);assert.equal(m.result!.players[0].survivalMs,3000);
  assert.equal(m.result!.players.find(p=>p.id===c.id)!.kills,0);assert.equal(m.result!.players.find(p=>p.id===b.id)!.nickname,'<script>');
- const frozen=JSON.stringify(m.result),tick=m.game.tick;m.quit(a.id,4100);assert.equal(m.phase,'WINNER');assert.equal(m.winnerId,a.id,'Champion leaving cannot change final winner');m.step(7999);assert.equal(m.phase,'WINNER');m.step(8000);assert.equal(m.phase,'RESULT');assert.equal(m.game.tick,tick);assert.equal(JSON.stringify(m.result),frozen);
+ const frozen=JSON.stringify(m.result),tick=m.game.tick;m.quit(a.id,4100);assert.equal(m.phase,'WINNER');assert.equal(m.winnerId,a.id,'Champion leaving cannot change final winner');m.step(m.resultAt!-1);assert.equal(m.phase,'WINNER');m.step(m.resultAt!);assert.equal(m.phase,'RESULT');assert.equal(m.game.tick,tick);assert.equal(JSON.stringify(m.result),frozen);
  const copy=m.snapshot();copy.result!.players[0].kills=999;assert.equal(JSON.stringify(m.result),frozen,'Result snapshots deep-copy');copy.players[0].attackTargets!['fake']=99;assert.equal(m.players.get(a.id)!.attackTargets!['fake'],undefined);
 }
 {
@@ -23,7 +26,7 @@ const people=(n=3):LobbyPlayer[]=>Array.from({length:n},(_,slot)=>({id:`user-${s
 }
 {
  const m=new MatchSession(people(2),1000,8);m.disconnect('user-0',2000);m.disconnect('user-1',2000);m.step(2000);assert.equal(m.phase,'CANCELLED');assert.equal(m.result,undefined);m.step(10000);assert.equal(m.phase,'CANCELLED');
- const draw=new MatchSession(people(2),0,8);draw.step(2000);const [a,b]=[...draw.game.players.values()];draw.game.damage(a,b,999,0,0);draw.game.damage(b,a,999,0,0);draw.step(2034);assert.equal(draw.result!.draw,true);assert.equal(draw.result!.winnerId,undefined);draw.step(6034);assert.equal(draw.phase,'RESULT');
+ const draw=new MatchSession(people(2),0,8);draw.step(2000);const [a,b]=[...draw.game.players.values()];draw.game.damage(a,b,999,0,0);draw.game.damage(b,a,999,0,0);draw.step(2034);assert.equal(draw.result!.draw,true);assert.equal(draw.result!.winnerId,undefined);draw.step(draw.resultAt!);assert.equal(draw.phase,'RESULT');
 }
 assert.equal(Object.keys(VICTORY_LINES).length,16);assert.equal(formatSurvival(201000),'03:21');assert.equal(formatSurvival(-100),'00:00');
-console.log('PASS M4: authoritative 4s/result, real damage/taken/movement/skill/hit statistics, survival/placement, positive ties/zero awards, frozen winner on exit, deep copies, cancel/no result and draw.');
+console.log('PASS M4: authoritative celebration/result, real damage/taken/movement/skill/hit statistics, survival/placement, positive ties/zero awards, frozen winner on exit, deep copies, cancel/no result and draw.');

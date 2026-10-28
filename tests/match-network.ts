@@ -40,8 +40,8 @@ try{
  const final=JSON.stringify(room.match!.result),finalTick=game.tick;assert.ok(room.match!.result?.players.every(p=>Number.isFinite(p.survivalMs)));
  let receivedResult=false;recovered.on('room:update',state=>{if(state.phase==='RESULT'&&state.match?.result?.winnerId===ids[0])receivedResult=true;});
  await new Promise<void>(resolve=>a.emit('room:leave',resolve));assert.equal(room.match!.winnerId,ids[0]);
- await until(()=>receivedResult,5500);assert.equal(room.phase,'RESULT');assert.equal(game.tick,finalTick);assert.equal(JSON.stringify(room.match!.result),final,'M4 stats stay frozen after champion leaves');
+ await until(()=>receivedResult,8000);assert.equal(room.phase,'RESULT');assert.equal(game.tick,finalTick);assert.equal(JSON.stringify(room.match!.result),final,'M4 stats stay frozen after champion leaves');
  const round=game.round;(a as any).emit('resetTraining');await wait(120);assert.equal(game.round,round);assert.equal(leak,false);assert.equal(host.room.players.size,0);assert.ok(snapshot&&snapshot.players.length===8);
  await new Promise<void>(resolve=>a.emit('room:leave',resolve));await new Promise<void>(resolve=>recovered.emit('room:leave',resolve));assert.equal(host.lobby.rooms.has(room.id),false);
- console.log('PASS M2 real network: 8 seats → 3s → protected play → lethal attack → placement → winner; isolated snapshots/events, authenticated recovery, dead-input rejection, no training reset, M3 zero spectator packets, M4 four-second celebration/result/frozen champion and cleanup.');
+ console.log('PASS M2 real network: 8 seats → 3s → protected play → lethal attack → placement → winner; isolated snapshots/events, authenticated recovery, dead-input rejection, no training reset, M3 zero spectator packets, M4 timed celebration/result/frozen champion and cleanup.');
 }finally{clients.forEach(c=>c.disconnect());host.close();}

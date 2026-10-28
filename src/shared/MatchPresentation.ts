@@ -1,5 +1,6 @@
 import type {MBTIType} from './characters/CharacterDefinition';
-export const CELEBRATION_MS=4000;
+export const CHAMPION_TIMING={enterMs:800,throwAtMs:1100,flightMs:1150,landAtMs:2250,settleMs:300,confettiAtMs:2550,confettiMs:2300,sceneMs:6400} as const;
+export const CELEBRATION_MS=CHAMPION_TIMING.sceneMs;
 export const VICTORY_LINES:Record<MBTIType,string>={
  ENTP:'事实证明，他说得都对。',
  INFP:'忍到最后的人赢了。',

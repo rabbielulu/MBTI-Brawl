@@ -15,7 +15,7 @@ npm run start:lan
 
 本机打开 `http://localhost:3000`，选择「多人乱斗」。服务器监听 `0.0.0.0:3000`，静态页面、战斗和大厅共用端口。开发模式 `npm run dev` 同时启动 Node 3000 与 Vite 5173；修改服务器代码后重启 Node。
 
-**当前协议 v12，升级后先停止旧 Host 并重启，各设备刷新页面。** 快捷方式复用已有 Host 时仅更新前端构建。保持 Host 终端打开，Control+C 停止。
+**当前协议 v14，升级后先停止旧 Host 并重启，各设备刷新页面。** 快捷方式复用已有 Host 时仅更新前端构建。保持 Host 终端打开，Control+C 停止。
 
 ## 大厅试玩
 
@@ -64,13 +64,13 @@ npm run test:presentation
 npm run test:projectiles
 ```
 
-- [M4 庆祝与结算报告](docs/M4_RESULT_REPORT.md)
-- [机器人测试功能报告](docs/BOT_TESTING_REPORT.md)
-- [M3 观战验收报告](docs/M3_SPECTATOR_REPORT.md)
-- [M2 比赛生命周期报告](docs/M2_MATCH_REPORT.md)
-- [M1 大厅报告：改动、协议、状态机、测试与下一阶段](docs/M1_LOBBY_REPORT.md)
-- [四人格战斗报告](docs/CHARACTER_SLICE_REPORT.md)
-- [Emoji 与弹丸视觉报告](docs/EMOJI_COMBAT_REPORT.md)
+- [M4 庆祝与结算报告](docs/report/M4_RESULT_REPORT.md)
+- [机器人测试功能报告](docs/report/BOT_TESTING_REPORT.md)
+- [M3 观战验收报告](docs/report/M3_SPECTATOR_REPORT.md)
+- [M2 比赛生命周期报告](docs/report/M2_MATCH_REPORT.md)
+- [M1 大厅报告：改动、协议、状态机、测试与下一阶段](docs/report/M1_LOBBY_REPORT.md)
+- [四人格战斗报告](docs/report/CHARACTER_SLICE_REPORT.md)
+- [Emoji 与弹丸视觉报告](docs/report/EMOJI_COMBAT_REPORT.md)
 - [Emoji 平台兼容记录](docs/EMOJI_COMPATIBILITY.md)
 
 `/visual-lab.html` 为独立八角色渲染压测页，不占 LAN 席位。已完成比赛、淘汰、观战、冠军庆祝、战绩和趣味称号；同房再战、真实排行榜及数据库尚未实现。真实 iOS / Android 联机仍待验收。
@@ -78,9 +78,12 @@ npm run test:projectiles
 ### M5 原房间再来一局
 结算页点击「再来一局」，所有在线玩家一起返回原大厅，保留连接、昵称、人格和测试机器人。点击自己的角色卡可换人格，2 人及以上重新等待 30 秒（满员也保留换角色时间）；不足 2 人等待加入。Enter 仍可跳过大厅等待。已离线玩家清理，下一局重新生成场地与全部战斗状态。
 
-协议版本 12，请重启 Host 并刷新所有客户端。[M5 验证报告](docs/M5_REMATCH_REPORT.md)。
+协议版本 14，请重启 Host 并刷新所有客户端。[M5 验证报告](docs/report/M5_REMATCH_REPORT.md)。
 
 ### 全部 16 人格战斗原型
 多人房间现已开放全部 16 型，每个人格都有独立普攻、技能、大招和特质。仍为每房间 8 人；机器人也会使用全部人格。按 Combat Master V0.2 统一四个既有角色的数值，并增加传送、标记、推拉、炮台、随机效果、反击等共用机制。
 
-详见 [16 人格实施与数值报告](docs/CHARACTER_MASTER_V02_REPORT.md)。运行 `npm run test:sixteen` 验证核心机制与两个八人房间；`npm run test:bots` 验证 16 型机器人。
+详见 [16 人格实施与数值报告](docs/report/CHARACTER_MASTER_V02_REPORT.md)。运行 `npm run test:sixteen` 验证核心机制与两个八人房间；`npm run test:bots` 验证 16 型机器人。
+
+### Figma UX 页面结构
+欢迎页 Enter → 创建人格 / 昵称 → 角色卡与三个模式入口。Mode 1 为可换人格和重置的独立机器人试炼；Mode 2 为原有多人房间；Mode 3 小小花园仅预留入口。头像卡可进入 16 人格浏览和确认，邀请链接仍可直接创建角色后进房。协议 14，请重启 Host 并刷新页面。详见 [UX 流程验证报告](docs/UX_FLOW_REPORT.md)。

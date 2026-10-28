@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {once} from 'node:events';
+import {io} from 'socket.io-client';
+import {startServer} from '../server/GameServer';
+import {PROTOCOL_VERSION} from '../src/shared/GameConstants';
+const host=startServer(0),sockets:any[]=[];
+try{await once(host.http,'listening');const port=(host.http.address() as any).port;
+ const connect=async()=>{const c=io(`http://127.0.0.1:${port}/lobby`,{auth:{protocolVersion:PROTOCOL_VERSION},autoConnect:false,reconnection:false});sockets.push(c);const ready=once(c,'connect');c.connect();await ready;return c;};
+ const request=(c:any,event:string,payload:any={})=>new Promise<any>((resolve,reject)=>c.timeout(2000).emit(event,payload,(err:any,res:any)=>err?reject(err):resolve(res)));
+ const wait=async(check:()=>boolean)=>{const limit=Date.now()+2000;while(!check()){assert.ok(Date.now()<limit,'network update timeout');await new Promise(resolve=>setTimeout(resolve,15));}};
+ const a=await connect(),b=await connect();assert.equal((await request(a,'practice:reset')).code,'NOT_IN_ROOM');assert.equal((await request(a,'room:createPractice',{identity:{mbti:'ISTP',nickname:'练习者'},botCount:99})).ok,false);assert.equal(host.lobby.rooms.size,0,'Invalid count cannot create an orphan room');
+ let welcomes=0;a.on('match:welcome',()=>welcomes++);
+ const made=await request(a,'room:createPractice',{identity:{mbti:'ISTP',nickname:'练习者'},botCount:3});assert.ok(made.ok);assert.equal(made.room.mode,'practice');assert.equal(made.room.players.length,4);assert.equal(made.room.players.filter((p:any)=>p.bot).length,3);const room=host.lobby.get(made.room.id);await wait(()=>welcomes===1);
+ assert.equal((await request(b,'room:join',{roomId:room.id,identity:{mbti:'INTJ',nickname:'误入'}})).ok,false,'Independent practice cannot be joined by another human');
+ const old=room.match!;old.step(old.protectionEnd);for(const id of old.bots)old.eliminate(id,'killed',old.protectionEnd+1);old.step(old.protectionEnd+2);assert.equal(old.phase,'PLAYING','Training does not become a ranked result when bots die');assert.equal(old.result,undefined);
+ const updated=await request(a,'player:updateIdentity',{mbti:'ENFP',nickname:'练习者'});assert.ok(updated.ok);assert.equal(updated.playerId,made.playerId);assert.notEqual(room.match,old);assert.equal(room.players.size,4);assert.equal(room.match!.game.players.get(made.playerId)!.mbti,'ENFP');await wait(()=>welcomes===2);assert.ok([...room.match!.players.values()].every(p=>p.alive&&p.kills===0&&p.damageDealt===0));
+ const previous=room.match!;await request(a,'practice:reset');await wait(()=>welcomes===3);assert.notEqual(room.match,previous);assert.equal(room.match!.game.projectiles.length,0);assert.equal(room.match!.game.zones.length,0);
+ const madeB=await request(b,'room:create',{mbti:'INTJ',nickname:'真人房'});assert.equal(madeB.room.mode,'brawl');assert.equal((await request(b,'practice:reset')).ok,false,'Normal rooms cannot use practice reset');
+ const other=await connect();await request(other,'room:join',{roomId:madeB.room.id,identity:{mbti:'ISFP',nickname:'朋友'}});await request(b,'room:debugStart');assert.equal((await request(b,'player:updateIdentity',{mbti:'ENFP',nickname:'真人房'})).ok,false,'Multiplayer combat keeps identity locked');
+ await new Promise<void>(resolve=>a.emit('room:leave',resolve));assert.ok(!host.lobby.rooms.has(room.id),'Leaving training removes bots and isolated room');
+ console.log('PASS UX practice: isolated room, bot count validation, private membership, all-character switching/reset with fresh welcome, no competitive result, multiplayer character lock, member-only reset and cleanup.');
+}finally{sockets.forEach(c=>c.disconnect());host.close();}

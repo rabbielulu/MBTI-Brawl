@@ -12,7 +12,7 @@
 - `server/combat/StatusEffects.ts`：状态添加 / 刷新 / 查询。
 - `tests/characters.ts`：四套角色服务端规则及共用预测测试。
 - `tests/character-network.ts`：真实四连接、技能/大招/区域/状态同步测试。
-- `docs/CHARACTER_SLICE_REPORT.md`：本报告。
+- `docs/report/CHARACTER_SLICE_REPORT.md`：本报告。
 
 修改：`server/GameRoom.ts`、`server/GameServer.ts`、`server/combat/CombatResolver.ts`；`src/shared/NetworkProtocol.ts`、`GameConstants.ts`、`Movement.ts`、`combat/CombatTypes.ts`；`src/characters.ts`；`src/client/network/NetworkClient.ts`；`src/client/input/DesktopInputAdapter.ts`、`MobileInputAdapter.ts`、`TouchState.ts`；`src/main.ts`、`src/light.css`；`tests/network.ts`、`tests/touch-input.ts`；`scripts/host.mjs`、`package.json`、`README.md`。生产 `dist/` 重新构建。
 

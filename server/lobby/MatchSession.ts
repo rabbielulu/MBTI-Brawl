@@ -9,7 +9,7 @@ export class MatchSession {
  readonly game:GameRoom;readonly players=new Map<string,MatchPlayer>();readonly grace=new Map<string,number>();
  private lastEventId=0;private identities:LobbyPlayer[];result?:MatchResult;endedAt?:number;resultAt?:number;
  phase:MatchPhase='COUNTDOWN';winnerId?:string;draw=false;
- constructor(players:LobbyPlayer[],readonly startAt:number,capacity:number){
+ constructor(players:LobbyPlayer[],readonly startAt:number,capacity:number,readonly practice=false){
   this.identities=players.map(p=>({...p}));this.game=new GameRoom(capacity);
   for(const p of players){const actor=this.game.add(p.id,p.nickname,p.mbti,p.id)!;this.players.set(p.id,{id:p.id,alive:true,connected:p.connected,hp:actor.hp,personality:0,kills:0,damageDealt:0,damageTaken:0,distanceMoved:0,skillUses:0,ultimateUses:0,attackTargets:{}});}
   this.bots=new Set(players.filter(p=>p.bot).map(p=>p.id));this.botController=new BotController(this.game,this.bots);
@@ -30,6 +30,7 @@ export class MatchSession {
  resolve(now=Date.now()){
   if(this.finished())return;
   if(![...this.players.values()].some(p=>p.connected&&!this.bots.has(p.id))){this.phase='CANCELLED';this.winnerId=undefined;return;}
+  if(this.practice)return;
   const alive=[...this.players.values()].filter(p=>p.alive);
   if(alive.length<=1){this.phase='WINNER';this.draw=alive.length===0;this.winnerId=alive[0]?.id;if(alive[0]){alive[0].placement=1;alive[0].survivalMs=Math.max(0,now-this.startAt);}
    this.endedAt=now;this.resultAt=now+CELEBRATION_MS;this.result=buildMatchResult(this.identities,this.players,this.startAt,now,this.winnerId,this.draw);}

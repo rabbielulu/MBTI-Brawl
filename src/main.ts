@@ -1,3 +1,4 @@
+import {characterCard,characterAbilities} from './client/presentation/CharacterCard';
 import {LobbyFlow} from './client/lobby/LobbyFlow';
 import {PLAYABLE_TYPES,isPlayable} from './shared/characters/CharacterDatabase';
 import {CHARACTERS,getCharacter} from './client/presentation/CharacterPresentation';
@@ -61,7 +62,7 @@ window.addEventListener('keydown', (event) => {
 }, true);
 function localStateMaxHp(){return multiplayer?(network.local()?.maxHp||kit.hp):kit.hp;}
 function showCard() {
-  if(multiplayer){const c=currentCharacter();modal(`${c.mbti} · ${c.nickname}`,`<div class="character-profile" style="--character-color:${c.colorCss}"><div class="character-emblem">${c.presentation.symbol}</div><p>${c.group} · ${c.presentation.weapon}</p><h3>${c.presentation.fantasy}</h3><p><kbd>LMB</kbd> ${c.presentation.basicName} · ${c.basicAttack.damage} 伤害 / ${c.basicAttack.cooldownMs}ms</p><h3><kbd>RMB</kbd> ${c.skill.name}</h3><p>${c.skill.description}</p><small>冷却 ${c.skill.cooldown} 秒 · ${c.skill.aimMode==='position'?'鼠标指定区域 / 触屏拖动选择方向':c.skill.aimMode==='direction'?'朝瞄准方向释放':'点击释放'}</small><h3><kbd>SPACE</kbd> ${c.ultimate.name}</h3><p>${c.ultimate.description}</p><small>消耗 100 人格能量</small><h3>特质 · ${c.trait.name}</h3><p>${c.trait.description}</p><p class="muted">WASD 移动 · 鼠标瞄准 · 左键普攻 / 右键技能 / 空格大招。触屏使用双摇杆和技能按钮。打开档案不暂停对战。</p></div>`,'<button data-close>返回场地 ↗</button>');return;}
+  if(multiplayer){const c=currentCharacter(),practice=network.lobby?.room?.mode==='practice';modal(`${c.mbti} · ${c.nickname}`,`<div class="character-detail-layout">${characterCard(c.mbti,playerNickname)}${characterAbilities(c.mbti)}</div><p class="muted">${practice?'试炼场可以随时更换人格。':'本局角色已锁定，结束后可在大厅更换。'} 打开档案不暂停对战。</p>`,`${practice?'<button id="profile-change" class="secondary">更换人格</button>':''}<button data-close>返回场地 ↗</button>`);dialog.classList.add('character-dialog');const change=document.querySelector<HTMLButtonElement>('#profile-change');if(change)change.onclick=()=>{dialog.close();flow.openCharacterBrowser('match');};return;}
 
   modal('人格档案', `<div class="character-detail">${personaMarkup}<div class="skill-details"><div class="eyebrow">COMBAT KIT / ENTP</div><h3><kbd>LMB</kbd> 嘴炮攻击</h3><p>朝鼠标方向发射文字弹，每发造成 ${kit.attackDamage} 点伤害。实际伤害转化为等量人格能量。</p><h3><kbd>RMB</kbd> ${kit.skill}</h3><p>${kit.skillDescription}</p><small>冷却 ${kit.skillCooldown / 1000} 秒</small><h3><kbd>SPACE</kbd> ${kit.ultimate}</h3><p>${kit.ultimateDescription}</p><p class="muted">打开角色卡不暂停战斗。ESC 或下方按钮返回。</p></div></div>`, '<button data-close>返回试验场 ↗</button>');
   dialog.classList.add('character-dialog');
@@ -210,7 +211,7 @@ export class Arena extends Phaser.Scene {
     const pointer=this.input.activePointer;const wp=pointer.positionToCamera(cam) as Phaser.Math.Vector2;
     if(multiplayer&&network.local()){this.hp=network.local()!.hp;this.energy=network.local()!.personality;}
     const matchRoom=network.lobby?.room;const matchControl=!matchRoom||(matchRoom.phase==='PLAYING'&&!!matchRoom.match?.players.find(p=>p.id===network.id)?.alive);
-    const canControl=matchControl&&active&&!dialogOpen&&!this.ended&&this.hp>0&&(!multiplayer||network.connected)&&!document.hidden&&document.hasFocus();
+    const canControl=matchControl&&active&&!dialogOpen&&!this.ended&&this.hp>0&&(!multiplayer||network.connected)&&!document.hidden&&document.hasFocus()&&(!flow||flow.root.hidden);
     mobileInput.sync(active&&!dialogOpen&&!this.ended&&(!network.lobby||network.local()?.alive===true),canControl,multiplayer,this.energy,multiplayer?(network.local()?.skillCooldownRemaining||0)<=0:this.time.now>=this.skillAt);
     this.desktopInput.cooldownMs=currentCharacter().basicAttack.cooldownMs/(multiplayer?network.local()?.statuses.find(s=>s.id==='haste')?.strength||1:1);
     const mouseAngle=Math.atan2(wp.y-this.py,wp.x-this.px);
@@ -307,7 +308,6 @@ export class Arena extends Phaser.Scene {
   }
   draw(){this.visuals.begin();this.characterGraphics.clear();this.used.forEach(t=>t.setVisible(false));this.labels.push(...this.used);this.used=[];const g=this.g;g.clear();g.fillStyle(0xfaf9f5);g.fillRoundedRect(45,60,1310,840,18);g.lineStyle(1,0xe6e1e8,.7);for(let x=60;x<1360;x+=50)g.lineBetween(x,65,x,895);for(let y=65;y<900;y+=50)g.lineBetween(50,y,1350,y);g.lineStyle(3,0xc5bacd);g.strokeRoundedRect(55,70,1290,820,12);g.lineStyle(1,0xe1d9e8,.7);g.strokeCircle(700,480,220);g.strokeCircle(700,480,215);g.lineBetween(700,90,700,870);g.lineBetween(70,480,1330,480);
     if(!multiplayer){g.fillStyle(0xf4a99c,.22);g.fillRect(560,85,280,95);g.lineStyle(1,0xd48f80,.4);g.strokeRect(560,85,280,95);this.text(700,120,'⚠ 伤害试验区',16,'#a95e51');this.text(700,148,'接触 −10 HP',11,'#ae7668');}
-    this.text(700,390,'MBTI',66,'#e6dfeb');this.text(700,545,'B R A W L',39,'#e6dfeb');this.text(700,588,'LET YOUR PERSONALITY DO THE TALKING.',9,'#bab0c2');
     for(const pool of this.terrain.mud){
       g.fillStyle(0xd4bd91,.85);g.fillPoints(pool.points.map(p=>({x:p.x,y:p.y+5})),true);
       g.fillStyle(0xe9d19f,.85);g.fillPoints(pool.points,true);
@@ -351,7 +351,7 @@ export class Arena extends Phaser.Scene {
 }
 new Phaser.Game({type:Phaser.AUTO,parent:'game',backgroundColor:'#f4f2ed',scale:{mode:Phaser.Scale.RESIZE,width:'100%',height:'100%'},scene:Arena,render:{antialias:true},input:{keyboard:true,mouse:true}});
 
-flow=new LobbyFlow(()=>{active=false;multiplayer=false;network.close();document.body.classList.remove('lan-mode');$('network-hud').hidden=true;scene?.reset();$('start-overlay').hidden=false;($('game-mode') as HTMLSelectElement).value='single';mbtiInput.value='ENTP';if(scene?.input.keyboard)scene.input.keyboard.enabled=false;},settings,(welcome,client)=>{
+flow=new LobbyFlow(settings,(welcome,client)=>{
   network.attach(welcome,client);multiplayer=true;active=false;scene.reset();
   scene.terrain=welcome.map;scene.targets=[];const local=welcome.snapshot.players.find(p=>p.id===welcome.id)!;
   selectedType=local.mbti;playerNickname=local.nickname;scene.px=local.x;scene.py=local.y;
@@ -362,6 +362,6 @@ flow=new LobbyFlow(()=>{active=false;multiplayer=false;network.close();document.
   $('card').querySelector('.entry-avatar')!.textContent=c.presentation.symbol;
   ($('card').querySelector('.entry-avatar') as HTMLElement).style.background=c.colorCss;
   $('toast').hidden=true;
-  document.body.classList.add('lan-mode','match-mode');$('network-hud').hidden=true;$('start-overlay').hidden=true;
+  document.body.classList.add('lan-mode','match-mode');document.body.classList.toggle('practice-mode',client.room?.mode==='practice');$('network-hud').hidden=true;$('start-overlay').hidden=true;
   active=true;scene.input.keyboard!.enabled=true;suggestTouch();
-},()=>{active=false;scene.clearInput();network.close();multiplayer=false;document.body.classList.remove('lan-mode','match-mode');scene.input.keyboard!.enabled=false;});
+},()=>{active=false;scene?.clearInput();network.close();multiplayer=false;document.body.classList.remove('lan-mode','match-mode','practice-mode');if(scene?.input.keyboard)scene.input.keyboard.enabled=false;});

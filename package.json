@@ -21,7 +21,8 @@
     "test:results": "tsx tests/results.ts && tsx tests/match-network.ts",
     "test:debug-start": "tsx tests/debug-start.ts",
     "test:rematch": "tsx tests/rematch.ts",
-    "test:sixteen": "tsx tests/combat-sixteen.ts && tsx tests/sixteen-network.ts"
+    "test:sixteen": "tsx tests/combat-sixteen.ts && tsx tests/sixteen-network.ts",
+    "test:practice": "tsx tests/practice-flow.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0",

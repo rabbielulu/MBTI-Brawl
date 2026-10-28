@@ -1,0 +1,96 @@
+{
+  "fileKey": "oKybAbnv1MfebanRgnVlD4",
+  "page": "0:1",
+  "assets": [
+    {
+      "path": "public/figma-flow/welcome.png",
+      "nodeId": "32:81",
+      "bytes": 2274893,
+      "intrinsicSize": [
+        1103,
+        1426
+      ]
+    },
+    {
+      "path": "public/figma-flow/identity.png",
+      "nodeId": "29:33",
+      "bytes": 2644098,
+      "intrinsicSize": [
+        941,
+        1672
+      ]
+    },
+    {
+      "path": "public/figma-flow/practice.png",
+      "nodeId": "27:27",
+      "bytes": 2301098,
+      "intrinsicSize": [
+        1103,
+        1426
+      ]
+    },
+    {
+      "path": "public/figma-flow/settings.svg",
+      "nodeId": "32:70 / 11:255",
+      "bytes": 3005,
+      "intrinsicSize": {
+        "width": "38",
+        "height": "38"
+      }
+    },
+    {
+      "path": "public/figma-flow/change.svg",
+      "nodeId": "32:89",
+      "bytes": 894,
+      "intrinsicSize": {
+        "width": "84",
+        "height": "84"
+      }
+    },
+    {
+      "path": "public/figma-flow/back.svg",
+      "nodeId": "33:179",
+      "bytes": 377,
+      "intrinsicSize": {
+        "width": "57",
+        "height": "57"
+      }
+    },
+    {
+      "path": "public/figma-flow/close.svg",
+      "nodeId": "11:298",
+      "bytes": 1624,
+      "intrinsicSize": {
+        "width": "39",
+        "height": "39"
+      }
+    },
+    {
+      "path": "public/figma-flow/paper.svg",
+      "nodeId": "11:290",
+      "bytes": 270,
+      "intrinsicSize": {
+        "width": "660",
+        "height": "496.055"
+      }
+    },
+    {
+      "path": "public/figma-flow/fold.svg",
+      "nodeId": "29:37",
+      "bytes": 318,
+      "intrinsicSize": {
+        "width": "72.8976",
+        "height": "71.3575"
+      }
+    },
+    {
+      "path": "public/figma-flow/dim.svg",
+      "nodeId": "11:288",
+      "bytes": 265,
+      "intrinsicSize": {
+        "width": "1440",
+        "height": "1024"
+      }
+    }
+  ]
+}

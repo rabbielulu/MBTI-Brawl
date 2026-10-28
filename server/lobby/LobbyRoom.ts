@@ -14,12 +14,14 @@ export function validateRoomId(value:unknown):string {
  return value.trim().toUpperCase();
 }
 export class LobbyRoom {
+ mode:'brawl'|'practice'='brawl';
  match?:MatchSession;
  private previousResult?:number;private rematchLobby=false;private round=0;
  players=new Map<string,LobbyPlayer>();phase:MatchPhase='LOBBY';lobbyCountdownEnd?:number;serverStartTimestamp?:number;
  constructor(readonly id:string,readonly createdAt:number,readonly maxPlayers=DEFAULT_MAX_PLAYERS){if(!Number.isInteger(maxPlayers)||maxPlayers<2||maxPlayers>ABSOLUTE_MAX_PLAYERS)throw new Error('Invalid room capacity');}
  join(identity:PlayerIdentity,now:number,bot=false){
   this.step(now);
+  if(this.mode==='practice'&&!bot&&[...this.players.values()].some(p=>!p.bot))throw new LobbyError('MATCH_ALREADY_STARTED','这是独立试炼场，请在模式菜单创建自己的试炼。');
   if(this.phase!=='LOBBY')throw new LobbyError('MATCH_ALREADY_STARTED','本局已经开始准备，暂时不能加入。请创建新房间。');
   if(this.players.size>=this.maxPlayers)throw new LobbyError('ROOM_FULL','房间已满，请等朋友退出或创建新房间。');
   const occupied=new Set([...this.players.values()].map(p=>p.slot));const slot=Array.from({length:this.maxPlayers},(_,i)=>i).find(i=>!occupied.has(i))!;
@@ -36,7 +38,8 @@ export class LobbyRoom {
  }
  debugStart(now:number){this.step(now);if(this.phase!=='LOBBY')throw new LobbyError('MATCH_ALREADY_STARTED','本局已进入开局流程，无需重复开始。');if(this.players.size<2)throw new LobbyError('NOT_ENOUGH_PLAYERS','至少需要 2 人，先按 N 添加机器人或邀请朋友。');this.lobbyCountdownEnd=now;this.step(now);}
  addBot(now:number){const number=[...this.players.values()].filter(p=>p.bot).length+1;return this.join({mbti:PLAYABLE_TYPES[Math.floor(Math.random()*PLAYABLE_TYPES.length)],nickname:`机器人${String(number).padStart(2,'0')}`},now,true);}
- update(id:string,identity:PlayerIdentity,now:number){this.step(now);if(this.phase!=='LOBBY')throw new LobbyError('MATCH_ALREADY_STARTED','已经进入开局准备，当前不能修改角色。');const p=this.players.get(id);if(!p)throw new LobbyError('NOT_IN_ROOM','你已离开房间，请重新加入。');Object.assign(p,identity);}
+ resetPractice(now:number){if(this.mode!=='practice')throw new LobbyError('MATCH_ALREADY_STARTED','多人比赛不能使用试炼重置。');this.round++;this.lobbyCountdownEnd=undefined;this.phase='COUNTDOWN';this.serverStartTimestamp=now+1000;this.match=new MatchSession([...this.players.values()].filter(p=>p.connected),this.serverStartTimestamp,this.maxPlayers,true);this.match.game.round=this.round;}
+ update(id:string,identity:PlayerIdentity,now:number){if(this.mode==='practice'){const p=this.players.get(id);if(!p?.connected||p.bot)throw new LobbyError('NOT_IN_ROOM','试炼席位已失效。');Object.assign(p,identity);this.resetPractice(now);return;}this.step(now);if(this.phase!=='LOBBY')throw new LobbyError('MATCH_ALREADY_STARTED','已经进入开局准备，当前不能修改角色。');const p=this.players.get(id);if(!p)throw new LobbyError('NOT_IN_ROOM','你已离开房间，请重新加入。');Object.assign(p,identity);}
  remove(id:string,now:number){this.step(now);if(this.match){const player=this.players.get(id);if(player)player.connected=false;this.match.quit(id,now);}else this.players.delete(id);this.step(now);}
  step(now:number){
   const before=`${this.phase}:${this.lobbyCountdownEnd}`;
@@ -45,11 +48,11 @@ export class LobbyRoom {
    else {
     this.lobbyCountdownEnd??=now+LOBBY_COUNTDOWN_MS;
     if(!this.rematchLobby&&this.players.size===this.maxPlayers)this.lobbyCountdownEnd=Math.min(this.lobbyCountdownEnd,now+FULL_ROOM_COUNTDOWN_MS);
-    if(now>=this.lobbyCountdownEnd){this.phase='COUNTDOWN';this.serverStartTimestamp=this.lobbyCountdownEnd+3000;this.match=new MatchSession([...this.players.values()],this.serverStartTimestamp,this.maxPlayers);this.match.game.round=this.round;}
+    if(now>=this.lobbyCountdownEnd){this.phase='COUNTDOWN';this.serverStartTimestamp=this.lobbyCountdownEnd+3000;this.match=new MatchSession([...this.players.values()],this.serverStartTimestamp,this.maxPlayers,this.mode==='practice');this.match.game.round=this.round;}
    }
   }
   if(this.match){this.match.step(now);this.phase=this.match.phase;}
   return before!==`${this.phase}:${this.lobbyCountdownEnd}`;
  }
- snapshot(now:number):LobbyRoomState{return {id:this.id,maxPlayers:this.maxPlayers,createdAt:this.createdAt,phase:this.phase,lobbyCountdownEnd:this.lobbyCountdownEnd,serverStartTimestamp:this.serverStartTimestamp,serverNow:now,match:this.match?.snapshot(),players:[...this.players.values()].sort((a,b)=>a.slot-b.slot).map(p=>({...p}))};}
+ snapshot(now:number):LobbyRoomState{return {id:this.id,mode:this.mode,maxPlayers:this.maxPlayers,createdAt:this.createdAt,phase:this.phase,lobbyCountdownEnd:this.lobbyCountdownEnd,serverStartTimestamp:this.serverStartTimestamp,serverNow:now,match:this.match?.snapshot(),players:[...this.players.values()].sort((a,b)=>a.slot-b.slot).map(p=>({...p}))};}
 }

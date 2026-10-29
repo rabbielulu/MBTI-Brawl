@@ -1,3 +1,4 @@
+import {WeeklyLeaderboard} from '../leaderboard/WeeklyLeaderboard';
 import {TERRAIN_PROFILES,type TerrainOptions} from '../../src/terrain';
 import {randomUUID} from 'node:crypto';
 import {NET} from '../../src/shared/GameConstants';
@@ -8,7 +9,7 @@ import type {LobbyClientEvents,LobbyServerEvents,LobbyReply} from '../../src/sha
 import {LobbyError,validateIdentity} from './LobbyRoom';
 import type {LobbyRoom} from './LobbyRoom';
 import {LobbyRegistry} from './LobbyRegistry';
-export function installLobby(io:Server,port:()=>number){
+export function installLobby(io:Server,port:()=>number,leaderboard=new WeeklyLeaderboard()){
  const registry=new LobbyRegistry(),namespace=io.of('/lobby') as Namespace<LobbyClientEvents,LobbyServerEvents>;
  namespace.use((socket,next)=>{if(socket.handshake.auth.protocolVersion!==PROTOCOL_VERSION)next(new Error('Host 版本不匹配，请重启 Host 并刷新页面。'));else next();});
  function inviteUrl(host:string|undefined,id:string){
@@ -23,13 +24,16 @@ export function installLobby(io:Server,port:()=>number){
  }
  const credentials=new Map<string,string>();
  const welcome=(room:LobbyRoom,playerId:string)=>({protocolVersion:PROTOCOL_VERSION,id:playerId,map:room.match!.game.map,snapshot:room.match!.game.snapshot()});
- const broadcast=(room:LobbyRoom)=>namespace.to(room.id).emit('room:update',room.snapshot(Date.now()));
+ let lastSaveError=0;
+ const recordResult=(room:LobbyRoom)=>{if(!room.match?.result)return;try{leaderboard.record(room.match.id,room.match.result,room.mode==='practice');}catch(error){if(Date.now()-lastSaveError>60000){lastSaveError=Date.now();console.error('Leaderboard save failed; will retry:',error);}}};
+ const broadcast=(room:LobbyRoom)=>{recordResult(room);namespace.to(room.id).emit('room:update',room.snapshot(Date.now()));};
  namespace.on('connection',socket=>{
   let membership:{room:LobbyRoom;playerId:string}|undefined;let rateStart=Date.now(),requests=0;
   const guard=()=>{const now=Date.now();if(now-rateStart>=5000){rateStart=now;requests=0;}if(++requests>12)throw new LobbyError('RATE_LIMITED','操作太快了，请稍等几秒再试。');};
   const reply=(ack:unknown,task:()=>LobbyReply)=>{if(typeof ack!=='function')return;try{guard();ack(task());}catch(error){const failure=error instanceof LobbyError?error:new LobbyError('NOT_IN_ROOM','房间操作失败，请重新进入。');ack({ok:false,code:failure.code,message:failure.message});}};
   const success=():LobbyReply=>({ok:true,playerId:membership!.playerId,room:membership!.room.snapshot(Date.now()),inviteUrl:inviteUrl(socket.handshake.headers.host,membership!.room.id),resumeToken:credentials.get(membership!.playerId)!});
   const leave=(unexpected=false)=>{if(!membership)return;const {room,playerId}=membership;membership=undefined;socket.leave(room.id);if(unexpected&&room.match){room.players.get(playerId)!.connected=false;room.match.disconnect(playerId,Date.now());room.step(Date.now());}else{credentials.delete(playerId);registry.remove(room,playerId,Date.now());if(room.players.has(playerId))room.players.get(playerId)!.connected=false;}
+   recordResult(room);
    if(![...room.players.values()].some(p=>p.connected&&!p.bot)&&(!room.match||room.phase==='CANCELLED'||room.phase==='WINNER'||room.phase==='RESULT')){registry.rooms.delete(room.id);for(const p of room.players.values())credentials.delete(p.id);}
    if(room.players.size)broadcast(room);};
   socket.on('room:create',(identity,ack)=>reply(ack,()=>{
@@ -49,7 +53,7 @@ export function installLobby(io:Server,port:()=>number){
    const data=validateIdentity(value.identity),room=registry.get(value.roomId);if(room.step(Date.now()))broadcast(room);const player=room.join(data,Date.now());membership={room,playerId:player.id};credentials.set(player.id,randomUUID());socket.data.lobbyPlayerId=player.id;socket.join(room.id);broadcast(room);return success();
   }));
   socket.on('player:updateIdentity',(identity,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','你已离开房间，请重新加入。');const data=validateIdentity(identity);if(membership.room.step(Date.now()))broadcast(membership.room);membership.room.update(membership.playerId,data,Date.now());broadcast(membership.room);return success();}));
-  socket.on('room:rematch',(request,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入房间。');const room=membership.room;const oldIds=[...room.players.keys()];room.rematch(request?.endedAt,Date.now());for(const id of oldIds)if(!room.players.has(id))credentials.delete(id);broadcast(room);return success();}));
+  socket.on('room:rematch',(request,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入房间。');const room=membership.room;const oldIds=[...room.players.keys()];recordResult(room);room.rematch(request?.endedAt,Date.now());for(const id of oldIds)if(!room.players.has(id))credentials.delete(id);broadcast(room);return success();}));
   socket.on('room:debugStart',(_request,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入房间。');const room=membership.room;if(room.step(Date.now()))broadcast(room);room.debugStart(Date.now());broadcast(room);return success();}));
   socket.on('room:addBot',(_request,ack)=>reply(ack,()=>{
    if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入房间，再添加机器人。');

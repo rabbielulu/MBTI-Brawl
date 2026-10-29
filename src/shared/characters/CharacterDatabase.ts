@@ -4,15 +4,15 @@ const basic=(overrides:Partial<AttackDefinition>={}):AttackDefinition=>({kind:'r
 const ability=(id:string,name:string,description:string,cooldown:number,aimMode:CharacterDefinition['skill']['aimMode'],primitive:CharacterDefinition['skill']['primitive'],params:Record<string,number>):CharacterDefinition['skill']=>({id,name,description,cooldown,aimMode,primitive,params});
 const kit=(mbti:MBTIType,nickname:string,damage:number,skill:CharacterDefinition['skill'],ultimate:CharacterDefinition['ultimate'],trait:CharacterDefinition['trait'],overrides:Partial<AttackDefinition>={}):CharacterDefinition=>({mbti,nickname,maxHp:100,moveSpeed:245,basicAttack:basic({damage,...overrides}),skill,ultimate,trait});
 export const CHARACTERS:Record<MBTIType,CharacterDefinition>={
- ENTP:{mbti:'ENTP',nickname:'互联网杠精',maxHp:100,moveSpeed:245,basicAttack:basic(),
+ ENTP:{mbti:'ENTP',nickname:'互联网杠精',maxHp:100,moveSpeed:245,basicAttack:basic({projectileSpeed:680}),
   skill:{id:'actually',name:'你说得不对',description:'发射 ACTUALLY!，造成 8 点伤害并破防 4 秒，受到伤害增加 15%。',cooldown:6,aimMode:'direction',primitive:'projectile',params:{damage:8,duration:4,vulnerability:1.15}},
   ultimate:{id:'speech',name:'我不是针对谁',description:'向四周发射 12 枚语言弹，每枚 9 点伤害，同一目标最多命中 3 枚。',cooldown:0,aimMode:'none',primitive:'zone',params:{damage:9,radius:260,pulses:12,hitCap:3,interval:.5,knockback:140}},
   trait:{id:'debate',params:{energyMultiplier:1.25},name:'Debate Me',description:'攻击受减益影响的目标，人格能量获取增加 25%。'}},
- INFP:{mbti:'INFP',nickname:'玻璃心核弹',maxHp:100,moveSpeed:245,basicAttack:basic({damage:9,cooldownMs:350,projectileSpeed:380,knockback:140}),
+ INFP:{mbti:'INFP',nickname:'玻璃心核弹',maxHp:100,moveSpeed:245,basicAttack:basic({damage:9,cooldownMs:350,projectileSpeed:540,knockback:140}),
   skill:{id:'endure',name:'没事，我没事',description:'3 秒内减伤 30%，实际承受伤害积为委屈值（上限 60）。',cooldown:7,aimMode:'none',primitive:'buff',params:{duration:3,reduction:.7,grievanceMax:60}},
   ultimate:{id:'emotion',name:'我忍你很久了！',description:'情绪爆炸：30 + 已损生命 × 0.4 + 委屈 × 0.5，上限 75 伤害，清空委屈。',cooldown:0,aimMode:'none',primitive:'zone',params:{damage:30,radius:280,missingHp:.4,grievance:.5,damageCap:75,knockback:330}},
   trait:{id:'sensitive',params:{maxEnergyBonus:.25,hpThreshold:.4},name:'Sensitive',description:'生命低于 40% 时，人格能量获取增加 25%。'}},
- ESTJ:{mbti:'ESTJ',nickname:'项目经理',maxHp:100,moveSpeed:245,basicAttack:basic({damage:10,cooldownMs:330,projectileSpeed:550,knockback:170}),
+ ESTJ:{mbti:'ESTJ',nickname:'项目经理',maxHp:100,moveSpeed:245,basicAttack:basic({damage:10,cooldownMs:330,projectileSpeed:780,knockback:170}),
   skill:{id:'deadline',name:'Deadline',description:'指定 280 距离内区域，3 秒后造成 18 点伤害，减速 25% 持续 2 秒。',cooldown:7,aimMode:'position',primitive:'zone',params:{range:280,radius:125,delay:3,damage:18,slow:.75,slowDuration:2}},
   ultimate:{id:'kpi',name:'绩效评估',description:'在指定区域生成 190 半径 KPI 场，持续 3 秒，每半秒扣除 10 点绩效生命。',cooldown:0,aimMode:'position',primitive:'zone',params:{range:280,radius:190,duration:3,interval:.5,damage:10}},
   trait:{id:'schedule',params:{minTargets:2,refund:.5,refundCap:2},name:'On Schedule',description:'Deadline 每额外命中一人返还 0.5 秒冷却，上限 2 秒。'}},

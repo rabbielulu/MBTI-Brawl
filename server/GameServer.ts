@@ -1,3 +1,4 @@
+import {WeeklyLeaderboard} from './leaderboard/WeeklyLeaderboard';
 import {installLobby} from './lobby/installLobby';
 import { createServer } from 'node:http';
 import { createReadStream,existsSync,statSync } from 'node:fs';
@@ -9,11 +10,13 @@ import {isPlayable} from '../src/shared/characters/CharacterDatabase';
 import { GameRoom } from './GameRoom';
 import { NET,PROTOCOL_VERSION } from '../src/shared/GameConstants';
 import type { ClientEvents,ServerEvents } from '../src/shared/NetworkProtocol';
-export function startServer(port=Number(process.env.PORT)||3000) {
+export function startServer(port=Number(process.env.PORT)||3000,options:{leaderboardPath?:string}={}) {
+ const leaderboard=new WeeklyLeaderboard(options.leaderboardPath??(port===0?undefined:resolve(process.env.BRAWL_DATA_DIR||'data','leaderboard.json')));
  const root=fileURLToPath(new URL('../dist/',import.meta.url));
  const mime:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png'};
  const http=createServer((req,res)=>{
   let pathname:string;try{pathname=decodeURIComponent(new URL(req.url||'/', 'http://localhost').pathname);}catch{res.writeHead(400).end();return;}
+  if(pathname==='/api/leaderboard/weekly'&&req.method==='GET'){res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify(leaderboard.weekly()));return;}
   if(pathname==='/health'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({ok:true,protocolVersion:PROTOCOL_VERSION,players:room.players.size,tick:room.tick,lobbyRooms:lobby.registry.rooms.size,lobbyPlayers:lobby.registry.playerCount}));return;}
   const path=resolve(root,'.'+(pathname==='/'?'/index.html':pathname));
   if(!path.startsWith(root)||!existsSync(path)||!statSync(path).isFile()){res.writeHead(404).end('Build missing or file not found. Run npm run build first.');return;}
@@ -21,7 +24,7 @@ export function startServer(port=Number(process.env.PORT)||3000) {
  });
  const io=new Server<ClientEvents,ServerEvents>(http,{maxHttpBufferSize:8192});
  const room=new GameRoom();
- const lobby=installLobby(io,()=>{const address=http.address();return address&&typeof address==='object'?address.port:port;});
+ const lobby=installLobby(io,()=>{const address=http.address();return address&&typeof address==='object'?address.port:port;},leaderboard);
  io.on('connection',socket=>{
   const raw=socket.handshake.auth.nickname;
   if(typeof raw!=='string'||!raw.trim()||Array.from(raw.trim()).length>7){socket.emit('rejected','请输入最多 7 个字的昵称。');socket.disconnect(true);return;}
@@ -43,6 +46,6 @@ export function startServer(port=Number(process.env.PORT)||3000) {
   console.log(`Local: http://localhost:${actual}`);
   for(const list of Object.values(networkInterfaces()))for(const entry of list||[])if(entry.family==='IPv4'&&!entry.internal)console.log(`LAN:   http://${entry.address}:${actual}`);
  });
- return {http,io,room,lobby:lobby.registry,close:()=>{lobby.close();clearInterval(simulation);clearInterval(snapshots);io.close();http.closeAllConnections();}};
+ return {http,io,room,leaderboard,lobby:lobby.registry,close:()=>{lobby.close();clearInterval(simulation);clearInterval(snapshots);io.close();http.closeAllConnections();}};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))startServer();

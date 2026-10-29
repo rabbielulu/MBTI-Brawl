@@ -13,7 +13,9 @@ export class CombatVisuals {
  prop(x:number,y:number,role:string,angle:number,time:number,attacking:boolean,hit:boolean,dashing=false,adrenaline=false,escape=false){
   const c=getCharacter(role),p=c.presentation;
   const reach=attacking?43:30,bob=Math.sin(time*3)*2;
-  this.symbols.draw(x+Math.cos(angle)*reach,y+Math.sin(angle)*reach+bob,p.prop,{fontSize:role==='ESTP'?35:30,scale:attacking?1.22:1,rotation:role==='ESTJ'?Math.sin(time*2)*.1:role==='ESTP'?Math.sin(angle)*.2:0,depth:15,alpha:escape?.5:1});
+  let propX=Math.cos(angle)*reach,propY=Math.sin(angle)*reach+bob;
+  if(!attacking&&Math.abs(propX)<43&&propY<0){propX=(propX<0?-1:1)*50;propY=Math.max(-22,propY);}
+  this.symbols.draw(x+propX,y+propY,p.prop,{fontSize:role==='ESTP'?35:30,scale:attacking?1.22:1,rotation:role==='ESTJ'?Math.sin(time*2)*.1:role==='ESTP'?Math.sin(angle)*.2:0,depth:15,alpha:escape?.5:1});
   if(hit)this.symbols.draw(x+32,y-39,p.hurtSymbol,{fontSize:28,scale:1.2,rotation:Math.sin(time*20)*.15,depth:45});
   if(dashing){this.geometry.trail(x,y,angle,100,c.color);this.symbols.draw(x-Math.cos(angle)*50,y-Math.sin(angle)*50,p.skillSymbol,{fontSize:40,alpha:.7,rotation:angle,depth:16});}
   if(adrenaline)this.symbols.draw(x+Math.cos(time*4)*39,y-28+Math.sin(time*4)*12,p.ultimateSymbol,{fontSize:27,rotation:Math.sin(time)*.15,depth:16});

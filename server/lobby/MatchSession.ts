@@ -1,3 +1,4 @@
+import {randomUUID} from 'node:crypto';
 import {CELEBRATION_MS} from '../../src/shared/MatchPresentation';
 import {buildMatchResult} from './MatchResults';
 import {BotController} from '../bots/BotController';
@@ -5,6 +6,7 @@ import {GameRoom} from '../GameRoom';
 import type {LobbyPlayer,MatchState,MatchPlayer,MatchPhase,MatchResult} from '../../src/shared/LobbyProtocol';
 import type {PlayerInput} from '../../src/shared/NetworkProtocol';
 export class MatchSession {
+ readonly id=randomUUID();
  readonly bots:Set<string>;private botController:BotController;
  readonly game:GameRoom;readonly players=new Map<string,MatchPlayer>();readonly grace=new Map<string,number>();
  private lastEventId=0;private identities:LobbyPlayer[];result?:MatchResult;endedAt?:number;resultAt?:number;

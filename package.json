@@ -23,7 +23,8 @@
     "test:rematch": "tsx tests/rematch.ts",
     "test:sixteen": "tsx tests/combat-sixteen.ts && tsx tests/sixteen-network.ts",
     "test:practice": "tsx tests/practice-flow.ts",
-    "test:terrain": "tsx tests/terrain-mvp.ts && tsx tests/terrain-network.ts"
+    "test:terrain": "tsx tests/terrain-mvp.ts && tsx tests/terrain-network.ts",
+    "test:leaderboard": "tsx tests/leaderboard.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0",

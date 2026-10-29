@@ -10,7 +10,7 @@ import {CHARACTERS,getCharacter} from '../presentation/CharacterPresentation';
 import {PLAYABLE_TYPES,isPlayable} from '../../shared/characters/CharacterDatabase';
 import type {LobbyRoomState,PlayerIdentity} from '../../shared/LobbyProtocol';
 import './lobby.css';
-type FlowView='home'|'identity'|'modes'|'characters'|'room-entry'|'practice-confirm'|'lobby'|'match';
+type FlowView='home'|'identity'|'modes'|'ranking'|'characters'|'room-entry'|'practice-confirm'|'lobby'|'match';
 /** Lobby UI presents authoritative match state; gameplay stays in the Phaser adapter. */
 export class LobbyFlow {
  private characterReturn:'modes'|'lobby'|'match'='modes';private identityReturn:'home'|'modes'|'lobby'='home';private returningToModes=false;
@@ -64,8 +64,21 @@ export class LobbyFlow {
   };
  }
  private showModes(){
-  this.view='modes';this.editing=false;this.setUrl();this.shell(`<section class="mode-stage" data-design-node="11:254"><div class="mode-persona"><div id="mode-character"></div><button id="flow-change-character" class="change-character" aria-label="更换人格"><img src="/figma-flow/change.svg" alt=""></button><button id="flow-edit-identity" class="flow-text">修改昵称 / 角色资料</button></div><div class="mode-choices"><button id="flow-practice" class="mode-choice"><small>MODE 01</small><b>试炼场</b><span>自由练习 · 随时换人格 ↗</span></button><button id="flow-multiplayer" class="mode-choice"><small>MODE 02</small><b>多人乱斗</b><span>邀请朋友 · 最后存活者获胜 ↗</span></button><button id="flow-garden" class="mode-choice" disabled><small>MODE 03 · COMING SOON</small><b>小小花园</b><span>放松一下，未来在这里相遇 · 暂未开放</span></button><button id="flow-ranking" class="flow-text" disabled>排行榜 · 敬请期待</button></div></section>`);
-  this.element('mode-character').innerHTML=characterCard(this.identity.mbti,this.identity.nickname);this.element('flow-change-character').onclick=()=>this.openCharacterBrowser('modes');this.element('flow-edit-identity').onclick=()=>{this.identityReturn='modes';this.showIdentity();};this.element('flow-practice').onclick=()=>this.showPracticeConfirm();this.element('flow-multiplayer').onclick=()=>this.showRoomEntry();
+  this.view='modes';this.editing=false;this.setUrl();this.shell(`<section class="mode-stage" data-design-node="11:254"><div class="mode-persona"><div id="mode-character"></div><button id="flow-change-character" class="change-character" aria-label="更换人格"><img src="/figma-flow/change.svg" alt=""></button><button id="flow-edit-identity" class="flow-text">修改昵称 / 角色资料</button></div><div class="mode-choices"><button id="flow-practice" class="mode-choice"><small>MODE 01</small><b>试炼场</b><span>自由练习 · 随时换人格 ↗</span></button><button id="flow-multiplayer" class="mode-choice"><small>MODE 02</small><b>多人乱斗</b><span>邀请朋友 · 最后存活者获胜 ↗</span></button><button id="flow-garden" class="mode-choice" disabled><small>MODE 03 · COMING SOON</small><b>小小花园</b><span>放松一下，未来在这里相遇 · 暂未开放</span></button></div></section>`);
+  const ranking=this.element('flow-brand');ranking.id='flow-ranking';ranking.className='weekly-entry';ranking.innerHTML='<span class="weekly-entry-icon"><img src="/figma-flow/trophy.svg" alt=""></span><span>本周排行</span>';
+  this.element('mode-character').innerHTML=characterCard(this.identity.mbti,this.identity.nickname);this.element('flow-change-character').onclick=()=>this.openCharacterBrowser('modes');this.element('flow-edit-identity').onclick=()=>{this.identityReturn='modes';this.showIdentity();};this.element('flow-ranking').onclick=()=>void this.showRanking();this.element('flow-practice').onclick=()=>this.showPracticeConfirm();this.element('flow-multiplayer').onclick=()=>this.showRoomEntry();
+ }
+ private async showRanking(){
+  this.view='ranking';this.shell('<section class="weekly-ranking"><button id="ranking-back" class="flow-text">← 返回玩法菜单</button><header><h1>本周胜场榜</h1><p id="ranking-period"></p></header><p class="ranking-rule">多人乱斗获胜 +1 · 同胜场并列 · 北京时间每周一 00:00 更新</p><div id="ranking-content" role="status" aria-live="polite">正在加载排行榜…</div><p class="ranking-identity-note">当前按昵称累计：同名合并，改名后分开统计。试炼场、平局和机器人获胜不计入。展示前 100 位。</p><button id="ranking-refresh" class="flow-secondary">刷新榜单</button></section>');
+  this.element('ranking-back').onclick=()=>this.showModes();this.element('ranking-refresh').onclick=()=>void this.showRanking();
+  const attempt=++this.attempt;
+  try{const response=await fetch('/api/leaderboard/weekly',{cache:'no-store',signal:AbortSignal.timeout(8000)});if(!response.ok)throw Error();const data:import('../../shared/Leaderboard').WeeklyLeaderboardData=await response.json();if(this.view!=='ranking'||attempt!==this.attempt)return;
+   const format=(value:string)=>new Date(value).toLocaleDateString('zh-CN',{timeZone:'Asia/Shanghai',month:'long',day:'numeric'});this.element('ranking-period').textContent=`${format(data.weekStart)} — ${format(new Date(new Date(data.weekEnd).getTime()-1).toISOString())}`;
+   const content=this.element('ranking-content');content.replaceChildren();
+   if(!data.entries.length){content.textContent='本周还没有获胜记录，去赢下第一场吧。';return;}
+   const table=document.createElement('table');table.className='weekly-table';table.innerHTML='<thead><tr><th scope="col">名次</th><th scope="col">玩家</th><th scope="col">胜场</th></tr></thead>';const body=document.createElement('tbody');
+   for(const row of data.entries){const tr=document.createElement('tr');tr.classList.toggle('ranking-self',row.nickname===this.identity.nickname);for(const value of [row.rank<=3?['🥇','🥈','🥉'][row.rank-1]:`#${row.rank}`,row.nickname,String(row.wins)]){const td=document.createElement('td');td.textContent=value;tr.append(td);}body.append(tr);}table.append(body);content.append(table);
+  }catch{if(this.view==='ranking'&&attempt===this.attempt)this.element('ranking-content').textContent='排行榜加载失败，请点击刷新重试。';}
  }
  private showRoomEntry(){
   this.view='room-entry';this.shell(`<section class="room-entry-panel"><button id="room-entry-back" class="flow-text">← 返回玩法菜单</button><div class="room-current-persona"></div><button id="room-create" class="flow-primary">创建房间 ↗</button><form id="room-join-form"><label for="identity-room">加入朋友的房间</label><div><input id="identity-room" maxlength="4" autocomplete="off" spellcheck="false" placeholder="输入 4 位房间号"><button type="submit" id="room-join" class="flow-secondary">加入</button></div></form><p id="room-entry-error" role="alert"></p></section>`);

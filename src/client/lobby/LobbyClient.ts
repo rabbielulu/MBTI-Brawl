@@ -12,7 +12,7 @@ export class LobbyClient {
  playerId='';room?:LobbyRoomState;inviteUrl='';serverOffset=0;
  constructor(private changed:(room:LobbyRoomState)=>void,private disconnected:(reason?:string)=>void){}
  private receive(room:LobbyRoomState){this.room=room;this.serverOffset=room.serverNow-Date.now();this.changed(room);}
- private request(event:'room:create'|'room:join'|'player:updateIdentity'|'room:resume'|'room:addBot'|'room:debugStart'|'room:rematch'|'room:createPractice'|'practice:reset',payload:unknown){return new Promise<void>((resolve,reject)=>{
+ private request(event:'room:setWait'|'room:create'|'room:join'|'player:updateIdentity'|'room:resume'|'room:addBot'|'room:debugStart'|'room:rematch'|'room:createPractice'|'practice:reset',payload:unknown){return new Promise<void>((resolve,reject)=>{
   const socket=this.socket;
   if(!socket?.connected){reject(new Error('与服务器的连接已断开，请重新进入房间。'));return;}
   this.pending.add(reject);
@@ -42,6 +42,7 @@ export class LobbyClient {
  }
  resetPractice(){return this.request('practice:reset',{});}
  rematch(){return this.request('room:rematch',{endedAt:this.room?.match?.result?.endedAt});}
+ setWait(seconds:number){return this.request('room:setWait',{seconds});}
  debugStart(){return this.request('room:debugStart',{});}
  addBot(){return this.request('room:addBot',{});}
  update(identity:PlayerIdentity){return this.request('player:updateIdentity',identity);}

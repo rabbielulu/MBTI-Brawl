@@ -1,0 +1,73 @@
+/* UI Visual Style Guide V2 — presentation only. Mingming artwork stays untouched. */
+:root{--v2-bg:#1e203e;--v2-panel:#302a55;--v2-stroke:#252039;--v2-cream:#fff9ef;--v2-purple:#d9c8ff;--v2-yellow:#ffdb77;--v2-muted:#c0b6d5;--v2-shadow:4px 5px 0 #11132666;--v2-radius:18px;--hud-cream:#fff9ef;--hud-ink:#252039;--hud-lilac:#d9c8ff;--hud-yellow:#ffdb77}
+#flow-root,#match-conclusion{background-color:var(--v2-bg);background-image:radial-gradient(circle at 1px 1px,#fff9ef06 1px,transparent 0);background-size:7px 7px;color:var(--v2-cream);font-family:'PingFang SC','Microsoft YaHei',system-ui,sans-serif;--flow-ink:#fff9ef;--flow-muted:#c0b6d5;--flow-line:#51486d;--flow-yellow:#ffdb77;--flow-purple:#d9c8ff;--ink:#252039;--muted:#c0b6d5;--paper:#fff9ef}
+#flow-root :is(h1,h2),#match-conclusion h1{font-weight:900;letter-spacing:-.035em}
+#flow-root :is(.flow-brand,.flow-text,.flow-kicker,.welcome-note,.character-browser-heading>span),#match-conclusion :is(.conclusion-eyebrow,.victory-line,#celebration-time){color:var(--v2-muted)}
+#flow-root .flow-brand{color:var(--v2-cream)}
+#flow-root .welcome-title{color:var(--v2-yellow);-webkit-text-stroke:7px var(--v2-stroke);text-shadow:5px 7px 0 #d9c8ff;paint-order:stroke fill}
+#flow-root .welcome-enter{color:var(--v2-cream);font-weight:850;text-shadow:3px 4px 0 var(--v2-stroke)}
+#flow-root :is(.flow-primary,.flow-secondary,.mode-choice,.weekly-entry),dialog button,#match-conclusion :is(#conclusion-exit,#conclusion-rematch){border:2px solid var(--v2-stroke);border-radius:var(--v2-radius);box-shadow:var(--v2-shadow);font-weight:800;transition:transform .14s cubic-bezier(.2,.8,.3,1.3),box-shadow .14s;filter:none}
+#flow-root .flow-primary,dialog button,#match-conclusion #conclusion-exit{background:var(--v2-yellow);color:var(--v2-stroke)}
+#flow-root .flow-secondary,#match-conclusion #conclusion-rematch{background:var(--v2-purple);color:var(--v2-stroke)}
+#flow-root :is(.flow-primary,.flow-secondary,.mode-choice,.weekly-entry):hover:not(:disabled),dialog button:hover,#match-conclusion button:hover{transform:translateY(-2px);box-shadow:4px 7px 0 #11132666}
+#flow-root :is(.flow-primary,.flow-secondary,.mode-choice,.weekly-entry):active:not(:disabled),dialog button:active,#match-conclusion button:active{transform:translateY(2px) scale(.98);box-shadow:1px 2px 0 #11132666}
+#flow-root button:focus-visible,dialog button:focus-visible,#match-conclusion button:focus-visible{outline:3px solid var(--v2-yellow);outline-offset:4px}
+#flow-root :is(#flow-fullscreen,#flow-settings){background:var(--v2-cream)!important;color:var(--v2-stroke);border:2px solid var(--v2-stroke)!important;border-radius:14px;box-shadow:var(--v2-shadow)}
+#flow-root :is(.identity-paper h1,.identity-paper label){color:var(--v2-stroke)}
+#flow-root .identity-paper label small{color:#766887}
+#flow-root .identity-paper:before{background-color:var(--v2-cream);box-shadow:6px 8px 0 #11132666;border-radius:18px}
+#flow-root :is(input,select),dialog :is(input,select){color:var(--v2-stroke);background:var(--v2-cream);border:2px solid #76658c;border-radius:12px;box-shadow:0 3px 0 #25203920;outline-offset:3px}
+#flow-root :is(input,select):focus,dialog :is(input,select):focus{outline:3px solid #d9c8ff88;border-color:#8060b5}
+#flow-root input::placeholder{color:#8d809e}
+#flow-root .mode-choice{color:var(--v2-stroke);background:var(--v2-purple)}
+#flow-root .mode-choice:nth-of-type(2){background:var(--v2-yellow)}
+#flow-root .mode-choice:nth-of-type(3){background:#c9dfc4;border-color:var(--v2-stroke);opacity:.58}
+#flow-root .mode-choice :is(small,span){color:#665674}
+#flow-root .weekly-entry{background:var(--v2-cream);color:var(--v2-stroke)}
+#flow-root .persona-card,dialog .persona-card{color:var(--v2-stroke);background:color-mix(in srgb,var(--persona) 34%,#fff9ef);border:2px solid var(--v2-stroke);border-radius:18px;box-shadow:var(--v2-shadow)}
+:is(#flow-root,dialog) .persona-card-top small{border:1.5px solid #25203977;background:#fff9ef77;color:#51435e;font-weight:700}
+:is(#flow-root,dialog) :is(.persona-quote,.persona-card-bottom small){color:#665674}
+:is(#flow-root,dialog) .persona-card-bottom{border-top:1px solid #25203933}
+#flow-root .character-tile.selected{outline:3px solid var(--v2-yellow);outline-offset:5px}
+#flow-root :is(.character-back,.change-character){filter:drop-shadow(1px 2px 0 #fff9ef77)}
+#flow-root .practice-confirm-paper{background:var(--v2-cream);color:var(--v2-stroke);border:2px solid var(--v2-stroke);border-radius:18px;box-shadow:var(--v2-shadow)}
+#flow-root .practice-confirm-paper :is(p,label,summary){color:#665674}
+#flow-root .room-current-persona{background:var(--v2-panel);color:var(--v2-cream);border:2px solid #73628c;border-radius:16px;box-shadow:var(--v2-shadow)}
+#flow-root :is(.lobby-slot.occupied){background:color-mix(in srgb,var(--persona) 24%,#fff9ef);border:2px solid var(--v2-stroke);border-radius:20px;box-shadow:var(--v2-shadow);color:var(--v2-stroke)}
+#flow-root #lobby-slots .occupied .slot-nickname{color:var(--v2-stroke)}
+#flow-root #lobby-slots .occupied>b{color:#71627f}
+#flow-root .lobby-slot.own{outline:3px solid var(--v2-purple);outline-offset:3px}
+#flow-root .lobby-slot.empty{background:#302a5555;border:2px dashed #796b95;color:#c0b6d5;border-radius:20px}
+#flow-root .lobby-slot.empty :is(span,b,small){color:#b0a2c6}
+#flow-root .lobby-clock{background:var(--v2-cream);border:2px solid var(--v2-stroke);border-radius:18px;color:#66508a;box-shadow:var(--v2-shadow);font-weight:900}
+#flow-root #lobby-room-code{background:var(--v2-panel);border-color:#796b95;color:var(--v2-purple);box-shadow:2px 3px 0 #11132644}
+#flow-root .lobby-wait button{background:var(--v2-cream);color:var(--v2-stroke);border:2px solid var(--v2-stroke);border-radius:10px}
+#flow-root .lobby-wait button[aria-pressed=true]{background:var(--v2-purple);border-color:#fff9ef;box-shadow:0 2px 0 #11132666}
+#flow-root :is(#lobby-status,#lobby-count,.lobby-test-hint,#lobby-message){color:var(--v2-muted)}
+#flow-root #lobby-message:not(:empty){background:var(--v2-panel);border:1px solid #796b95;border-radius:12px;color:#e9e1f5}
+#flow-root :is(#invite-fallback,#lobby-disconnected){background:var(--v2-panel);border:2px solid #796b95;color:var(--v2-cream);box-shadow:var(--v2-shadow)}
+dialog,dialog.character-choice-dialog{background:var(--v2-cream);color:var(--v2-stroke);--ink:#252039;--muted:#766887;border:2px solid var(--v2-stroke);border-radius:20px;box-shadow:7px 9px 0 #11132666}
+dialog::backdrop{background:#101127bc;backdrop-filter:none}
+dialog :is(h2,h3){color:var(--v2-stroke);font-weight:850}
+dialog :is(p,.eyebrow,.muted){color:#756582}
+dialog .secondary{background:var(--v2-purple)!important;color:var(--v2-stroke)!important;border:2px solid var(--v2-stroke)!important;box-shadow:var(--v2-shadow)!important}
+#flow-root .weekly-table{background:var(--v2-cream);color:var(--v2-stroke);border:2px solid var(--v2-stroke);border-radius:16px;box-shadow:var(--v2-shadow)}
+#flow-root .weekly-table th{background:var(--v2-purple);color:#51435e}
+#flow-root .weekly-table td{border-color:#ded1e8}
+#flow-root .weekly-table .ranking-self{background:#fff0bb}
+#flow-root :is(.ranking-rule,.ranking-identity-note){color:var(--v2-muted)}
+#match-conclusion .result-heading>p:last-child{color:var(--v2-muted)}
+#match-conclusion .result-table-wrap{background:var(--v2-cream);color:var(--v2-stroke);border:2px solid var(--v2-stroke);border-radius:18px;box-shadow:var(--v2-shadow)}
+#match-conclusion .result-table th{background:var(--v2-purple);color:#51435e;font-weight:800}
+#match-conclusion .result-table td{border-color:#e4d9e9}
+#match-conclusion .result-self{background:#ffedb0}
+#match-conclusion :is(.fun-awards,.fun-awards p,.fun-awards li,.conclusion-actions p){color:var(--v2-muted)}
+#match-conclusion .champion-dialogue{background:var(--v2-cream);color:var(--v2-stroke);border:2px solid var(--v2-stroke);box-shadow:var(--v2-shadow)}
+#match-conclusion .champion-announcement{color:var(--v2-cream);text-shadow:3px 4px 0 var(--v2-stroke)}
+@media(prefers-reduced-motion:reduce){#flow-root *,dialog *,#match-conclusion *{transition:none!important}}
+#flow-root #ranking-content{color:var(--v2-stroke);background:var(--v2-cream);border:2px solid var(--v2-stroke);border-radius:18px;box-shadow:var(--v2-shadow)}
+#flow-root #ranking-period{color:var(--v2-muted)}
+#flow-root .identity-paper .flow-kicker{color:#766887}
+#match-conclusion .champion-scene .victory-identity{color:var(--v2-cream)}
+#flow-root #lobby-room-code{font-weight:750}
+#match-conclusion #rematch-message{color:var(--v2-muted)}

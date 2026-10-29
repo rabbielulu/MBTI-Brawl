@@ -27,3 +27,17 @@ export function installFullscreenButton(button:HTMLButtonElement,beforeChange:()
  };
  doc.addEventListener('fullscreenchange',update);doc.addEventListener('webkitfullscreenchange',update);update();
 }
+
+/** Best-effort entry request. Browsers may require a fresh trusted input gesture. */
+export async function requestGameFullscreen(){
+ const doc=document as LegacyDocument,root=document.documentElement as LegacyElement;
+ if(doc.fullscreenElement||doc.webkitFullscreenElement)return true;
+ try{if(root.requestFullscreen)await root.requestFullscreen();else if(root.webkitRequestFullscreen)await root.webkitRequestFullscreen();else return false;return true;}catch{return false;}
+}
+export function autoFullscreenOnBattle(){
+ let cancelled=false;
+ const cleanup=()=>{cancelled=true;document.removeEventListener('pointerdown',retry,true);document.removeEventListener('keydown',retry,true);};
+ const retry=(event:Event)=>{if((event.target as Element)?.closest?.('#fullscreen,#settings,dialog'))return;cleanup();if(document.body.classList.contains('match-mode')&&!document.body.classList.contains('flow-active'))void requestGameFullscreen();};
+ void requestGameFullscreen().then(ok=>{if(!ok&&!cancelled){document.addEventListener('pointerdown',retry,true);document.addEventListener('keydown',retry,true);}});
+ return cleanup;
+}

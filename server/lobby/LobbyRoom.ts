@@ -16,6 +16,14 @@ export function validateRoomId(value:unknown):string {
 }
 export class LobbyRoom {
  mode:'brawl'|'practice'='brawl';terrainOptions:TerrainOptions={};
+ waitSeconds=30;private manualWait=false;
+ get hostId(){return [...this.players.values()].find(p=>!p.bot&&p.connected)?.id;}
+ setWait(id:string,seconds:unknown,now:number){
+  this.step(now);if(id!==this.hostId)throw new LobbyError('HOST_ONLY','仅房主可以调整等待时间。');
+  if(this.phase!=='LOBBY')throw new LobbyError('MATCH_ALREADY_STARTED','已进入开局流程，不能调整等待时间。');
+  if(typeof seconds!=='number'||![15,30,60,120].includes(seconds))throw new LobbyError('INVALID_WAIT','请选择 15、30、60 或 120 秒。');
+  this.waitSeconds=seconds;this.manualWait=true;this.lobbyCountdownEnd=this.players.size>=2?now+seconds*1000:undefined;
+ }
  match?:MatchSession;
  private previousResult?:number;private rematchLobby=false;private round=0;
  players=new Map<string,LobbyPlayer>();phase:MatchPhase='LOBBY';lobbyCountdownEnd?:number;serverStartTimestamp?:number;
@@ -47,13 +55,13 @@ export class LobbyRoom {
   if(this.phase==='LOBBY'){
    if(this.players.size<2)this.lobbyCountdownEnd=undefined;
    else {
-    this.lobbyCountdownEnd??=now+LOBBY_COUNTDOWN_MS;
-    if(!this.rematchLobby&&this.players.size===this.maxPlayers)this.lobbyCountdownEnd=Math.min(this.lobbyCountdownEnd,now+FULL_ROOM_COUNTDOWN_MS);
+    this.lobbyCountdownEnd??=now+this.waitSeconds*1000;
+    if(!this.manualWait&&!this.rematchLobby&&this.players.size===this.maxPlayers)this.lobbyCountdownEnd=Math.min(this.lobbyCountdownEnd,now+FULL_ROOM_COUNTDOWN_MS);
     if(now>=this.lobbyCountdownEnd){this.phase='COUNTDOWN';this.serverStartTimestamp=this.lobbyCountdownEnd+3000;this.match=new MatchSession([...this.players.values()],this.serverStartTimestamp,this.maxPlayers,this.mode==='practice',this.terrainOptions);this.match.game.round=this.round;}
    }
   }
   if(this.match){this.match.step(now);this.phase=this.match.phase;}
   return before!==`${this.phase}:${this.lobbyCountdownEnd}`;
  }
- snapshot(now:number):LobbyRoomState{return {id:this.id,mode:this.mode,maxPlayers:this.maxPlayers,createdAt:this.createdAt,phase:this.phase,lobbyCountdownEnd:this.lobbyCountdownEnd,serverStartTimestamp:this.serverStartTimestamp,serverNow:now,match:this.match?.snapshot(),players:[...this.players.values()].sort((a,b)=>a.slot-b.slot).map(p=>({...p}))};}
+ snapshot(now:number):LobbyRoomState{return {hostId:this.hostId,waitSeconds:this.waitSeconds,id:this.id,mode:this.mode,maxPlayers:this.maxPlayers,createdAt:this.createdAt,phase:this.phase,lobbyCountdownEnd:this.lobbyCountdownEnd,serverStartTimestamp:this.serverStartTimestamp,serverNow:now,match:this.match?.snapshot(),players:[...this.players.values()].sort((a,b)=>a.slot-b.slot).map(p=>({...p}))};}
 }

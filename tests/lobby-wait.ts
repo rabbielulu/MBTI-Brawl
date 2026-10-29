@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {LobbyRoom} from '../server/lobby/LobbyRoom';
+const room=new LobbyRoom('TEST',0);const a=room.join({mbti:'ENTP',nickname:'host'},0),b=room.join({mbti:'INTJ',nickname:'guest'},0);
+assert.equal(room.hostId,a.id);assert.throws(()=>room.setWait(b.id,60,100),/仅房主/);assert.throws(()=>room.setWait(a.id,999,100),/请选择/);
+room.setWait(a.id,120,1000);assert.equal(room.lobbyCountdownEnd,121000);assert.equal(room.snapshot(1000).waitSeconds,120);
+room.setWait(a.id,15,2000);assert.equal(room.lobbyCountdownEnd,17000);room.step(16999);assert.equal(room.phase,'LOBBY');
+room.remove(a.id,3000);assert.equal(room.hostId,b.id);room.setWait(b.id,60,4000);assert.equal(room.lobbyCountdownEnd,undefined);room.addBot(5000);assert.equal(room.lobbyCountdownEnd,65000);
+room.step(65000);assert.equal(room.phase,'COUNTDOWN');assert.throws(()=>room.setWait(b.id,30,65000),/开局流程/);
+const full=new LobbyRoom('FULL',0,2);const host=full.join({mbti:'ENTP',nickname:'host'},0);full.setWait(host.id,60,0);full.addBot(10);assert.equal(full.lobbyCountdownEnd,60010);full.step(10000);assert.equal(full.phase,'LOBBY');
+console.log('PASS host authorization, wait choices, authoritative deadline, solo wait, host migration, phase lock and manual full-room timer');

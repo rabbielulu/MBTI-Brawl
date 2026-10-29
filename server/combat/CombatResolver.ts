@@ -10,7 +10,7 @@ export function meleeTargets(attacker:NetworkPlayerState,players:Iterable<Networ
   const dx=p.x-attacker.x,dy=p.y-attacker.y,distance=Math.hypot(dx,dy);
   const angle=Math.atan2(Math.sin(Math.atan2(dy,dx)-attacker.aimAngle),Math.cos(Math.atan2(dy,dx)-attacker.aimAngle));
   if(distance>attack.meleeRange+20||Math.abs(angle)>attack.meleeArc/2)return false;
-  for(let i=1;i<=Math.ceil(distance/8);i++){const t=i/Math.ceil(distance/8);if(!attack.canPenetrateObstacle&&blocked(attacker.x+dx*t,attacker.y+dy*t,2,map.walls))return false;}
+  for(let i=1;i<=Math.ceil(distance/8);i++){const t=i/Math.ceil(distance/8);if(!(attack.canPenetrateCover??attack.canPenetrateObstacle)&&blocked(attacker.x+dx*t,attacker.y+dy*t,2,map.walls))return false;}
   return true;
  });
 }

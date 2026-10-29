@@ -13,10 +13,12 @@ export interface ResultPlayer extends PlayerIdentity {id:string;bot:boolean;plac
 export interface FunAward {id:'kills'|'damage'|'distance'|'focus'|'taken';icon:string;title:string;playerIds:string[];value:number;unit:string}
 export interface MatchResult {startedAt:number;endedAt:number;winnerId?:string;draw:boolean;players:ResultPlayer[];awards:FunAward[]}
 export interface MatchState {startAt:number;protectionEnd:number;players:MatchPlayer[];winnerId?:string;draw:boolean;endedAt?:number;resultAt?:number;result?:MatchResult}
-export interface LobbyRoomState {id:string;mode?:'brawl'|'practice';maxPlayers:number;players:LobbyPlayer[];phase:MatchPhase;createdAt:number;lobbyCountdownEnd?:number;serverStartTimestamp?:number;serverNow:number;match?:MatchState}
-export type LobbyErrorCode='INVALID_ROOM_ID'|'ROOM_NOT_FOUND'|'ROOM_FULL'|'MATCH_ALREADY_STARTED'|'INVALID_MBTI'|'INVALID_NICKNAME'|'ALREADY_IN_ROOM'|'NOT_IN_ROOM'|'RATE_LIMITED'|'NOT_ENOUGH_PLAYERS';
+export interface LobbyRoomState {hostId?:string;waitSeconds?:number;id:string;mode?:'brawl'|'practice';maxPlayers:number;players:LobbyPlayer[];phase:MatchPhase;createdAt:number;lobbyCountdownEnd?:number;serverStartTimestamp?:number;serverNow:number;match?:MatchState}
+export type LobbyErrorCode='INVALID_ROOM_ID'|'ROOM_NOT_FOUND'|'ROOM_FULL'|'MATCH_ALREADY_STARTED'|'INVALID_MBTI'|'INVALID_NICKNAME'|'ALREADY_IN_ROOM'|'NOT_IN_ROOM'|'RATE_LIMITED'|'NOT_ENOUGH_PLAYERS'|'HOST_ONLY'|'INVALID_WAIT';
 export type LobbyReply={ok:true;playerId:string;room:LobbyRoomState;inviteUrl:string;resumeToken:string}|{ok:false;code:LobbyErrorCode;message:string};
 export interface LobbyClientEvents {
+ 'room:setWait':(request:{seconds:number},reply:(response:LobbyReply)=>void)=>void;
+
  'room:createPractice':(request:{identity:unknown;botCount:number;terrain?:unknown},reply:(response:LobbyReply)=>void)=>void;
  'practice:reset':(request:unknown,reply:(response:LobbyReply)=>void)=>void;
  'room:rematch':(request:{endedAt:number},reply:(response:LobbyReply)=>void)=>void;

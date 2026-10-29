@@ -54,6 +54,7 @@ export function installLobby(io:Server,port:()=>number,leaderboard=new WeeklyLea
   }));
   socket.on('player:updateIdentity',(identity,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','你已离开房间，请重新加入。');const data=validateIdentity(identity);if(membership.room.step(Date.now()))broadcast(membership.room);membership.room.update(membership.playerId,data,Date.now());broadcast(membership.room);return success();}));
   socket.on('room:rematch',(request,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入房间。');const room=membership.room;const oldIds=[...room.players.keys()];recordResult(room);room.rematch(request?.endedAt,Date.now());for(const id of oldIds)if(!room.players.has(id))credentials.delete(id);broadcast(room);return success();}));
+  socket.on('room:setWait',(request,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入房间。');membership.room.setWait(membership.playerId,request?.seconds,Date.now());broadcast(membership.room);return success();}));
   socket.on('room:debugStart',(_request,ack)=>reply(ack,()=>{if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入房间。');const room=membership.room;if(room.step(Date.now()))broadcast(room);room.debugStart(Date.now());broadcast(room);return success();}));
   socket.on('room:addBot',(_request,ack)=>reply(ack,()=>{
    if(!membership)throw new LobbyError('NOT_IN_ROOM','请先进入房间，再添加机器人。');

@@ -12,6 +12,17 @@ import type { GameSnapshot, NetworkPlayerState, PlayerInput, NetworkProjectile, 
 const zero:PlayerInput={seq:0,moveX:0,moveY:0,aimAngle:0,basicAttackPressed:false,skillPressed:false,ultimatePressed:false};
 export class GameRoom {
  constructor(readonly capacity:number=NET.maxPlayers,private terrainOptions:import('../src/terrain').TerrainOptions={}){}
+ damageCover(w:import('../src/terrain').TerrainWall,amount:number,attackerId:string,basic=false){
+  if(!this.combatEnabled||!Number.isFinite(amount)||amount<=0||w.hp===0)return;
+  w.maxHp??=TERRAIN_CONFIG.coverHp[w.sizeType||'Medium'];w.hp??=w.maxHp;
+  const damage=Math.min(w.hp,basic?TERRAIN_CONFIG.coverBasicDamage:amount);w.hp=Math.max(0,w.hp-damage);w.state=w.hp===0?'destroyed':w.hp<w.maxHp?'damaged':'intact';
+  this.events.push({type:'cover',id:++this.eventId,round:this.round,tick:this.tick,attackerId,coverId:w.coverId||'',x:w.x+w.w/2,y:w.y+w.h/2,damage,hp:w.hp,destroyed:w.hp===0});
+ }
+ coverArea(point:{x:number;y:number},radius:number,damage:number,attackerId:string,config:{canDamageCover?:boolean;coverDamageMultiplier?:number}={}){
+  if(config.canDamageCover===false)return;
+  for(const w of this.map.walls)if(w.hp!==0&&Math.hypot(point.x-Math.max(w.x,Math.min(point.x,w.x+w.w)),point.y-Math.max(w.y,Math.min(point.y,w.y+w.h)))<=radius)this.damageCover(w,damage*(config.coverDamageMultiplier??1),attackerId);
+ }
+ private coverHits=new Map<number,Set<string>>();
  combatEnabled=true;
  skills=new SkillSystem(this);zones:NetworkZone[]=[];
  map=generateTerrain();tick=0;round=0;projectiles:NetworkProjectile[]=[];
@@ -52,7 +63,8 @@ export class GameRoom {
   this.events.push({type:'attack',id:++this.eventId,round:this.round,tick:this.tick,attackerId:player.id,x:player.x,y:player.y,aimAngle:player.aimAngle,kind:definition.kind});
   if(definition.kind==='melee'){
    const targets=meleeTargets(player,this.players.values(),definition,this.map);for(const target of targets)this.damage(player,target,definition.damage,Math.cos(player.aimAngle)*definition.knockback,Math.sin(player.aimAngle)*definition.knockback,true,'basic');this.skills.multiBonus(player,targets.length,false);
-  }else this.projectiles.push({id:++this.projectileId,ownerId:player.id,x:player.x,y:player.y,vx:Math.cos(player.aimAngle)*definition.projectileSpeed,vy:Math.sin(player.aimAngle)*definition.projectileSpeed,expiresTick:this.tick+Math.ceil(definition.lifetimeMs/1000*NET.tickRate),damage:definition.damage,radius:definition.projectileRadius,knockback:definition.knockback,source:'basic',canPenetrateObstacle:definition.canPenetrateObstacle,explosive:!!status(player,'explosive'),wobble:player.mbti==='INTP'?.07:undefined,angle:player.aimAngle,baseSpeed:definition.projectileSpeed});
+   const struckCovers=this.map.walls.filter(w=>w.hp!==0).filter(w=>{const x=Math.max(w.x,Math.min(player.x,w.x+w.w)),y=Math.max(w.y,Math.min(player.y,w.y+w.h)),angle=Math.atan2(Math.sin(Math.atan2(y-player.y,x-player.x)-player.aimAngle),Math.cos(Math.atan2(y-player.y,x-player.x)-player.aimAngle));if(Math.hypot(x-player.x,y-player.y)>definition.meleeRange||Math.abs(angle)>definition.meleeArc/2)return false;if(!(definition.canPenetrateCover??definition.canPenetrateObstacle)){const n=Math.max(1,Math.ceil(Math.hypot(x-player.x,y-player.y)/4));for(let i=1;i<n;i++)if(blocked(player.x+(x-player.x)*i/n,player.y+(y-player.y)*i/n,0,this.map.walls.filter(other=>other!==w)))return false;}return true;});if(definition.canDamageCover!==false)for(const w of struckCovers)this.damageCover(w,definition.damage*(definition.coverDamageMultiplier??1),player.id,true);
+  }else this.projectiles.push({id:++this.projectileId,ownerId:player.id,x:player.x,y:player.y,vx:Math.cos(player.aimAngle)*definition.projectileSpeed,vy:Math.sin(player.aimAngle)*definition.projectileSpeed,expiresTick:this.tick+Math.ceil(definition.lifetimeMs/1000*NET.tickRate),damage:definition.damage,radius:definition.projectileRadius,knockback:definition.knockback,source:'basic',canDamageCover:definition.canDamageCover,coverDamageMultiplier:definition.coverDamageMultiplier,canPenetrateCover:definition.canPenetrateCover,canPenetrateObstacle:definition.canPenetrateObstacle,explosive:!!status(player,'explosive'),wobble:player.mbti==='INTP'?.07:undefined,angle:player.aimAngle,baseSpeed:definition.projectileSpeed});
  }
  step(now=performance.now()){
   this.tick++;this.skills.prepare();
@@ -72,7 +84,10 @@ export class GameRoom {
    const steps=Math.max(1,Math.ceil(Math.hypot(shot.vx,shot.vy)/NET.tickRate/8));
    for(let i=0;i<steps&&shot.expiresTick>this.tick;i++){
     shot.x+=shot.vx/NET.tickRate/steps;shot.y+=shot.vy/NET.tickRate/steps;
-    if(blocked(shot.x,shot.y,shot.radius,shot.canPenetrateObstacle?[]:this.map.walls)){shot.expiresTick=this.tick;break;}
+    const covers=this.map.walls.filter(w=>w.hp!==0&&shot.x>w.x-shot.radius&&shot.x<w.x+w.w+shot.radius&&shot.y>w.y-shot.radius&&shot.y<w.y+w.h+shot.radius);
+    const penetrates=shot.canPenetrateCover??shot.canPenetrateObstacle;
+    for(const cover of covers)if(!this.coverHits.get(shot.id)?.has(cover.coverId||'')){let hits=this.coverHits.get(shot.id);if(!hits)this.coverHits.set(shot.id,hits=new Set());hits.add(cover.coverId||'');if(shot.canDamageCover!==false&&this.skills.allowProjectileHit(shot,'cover:'+cover.coverId))this.damageCover(cover,shot.damage*(shot.coverDamageMultiplier??1),shot.ownerId,shot.source==='basic');}
+    if((covers.length&&!penetrates)||blocked(shot.x,shot.y,shot.radius,[])){shot.expiresTick=this.tick;break;}
     const target=[...this.players.values()].find(p=>p.id!==shot.ownerId&&p.alive&&Math.hypot(p.x-shot.x,p.y-shot.y)<24+shot.radius);
     if(target){const attacker=this.players.get(shot.ownerId);if(attacker&&this.skills.allowProjectileHit(shot,target.id)){const speed=Math.hypot(shot.vx,shot.vy);this.damage(attacker,target,shot.damage,shot.vx/speed*shot.knockback,shot.vy/speed*shot.knockback,!shot.noEnergy,shot.turret?'turret':shot.source);if(shot.explosive){for(const other of this.players.values())if(other.id!==target.id&&other.id!==attacker.id&&other.alive&&Math.hypot(other.x-shot.x,other.y-shot.y)<85)this.damage(attacker,other,4,0,0,false,'ultimate');}}if(target.alive&&shot.debuffDuration)addStatus(target,'vulnerable',this.tick+Math.ceil(shot.debuffDuration*NET.tickRate),shot.debuffStrength||1.15);shot.expiresTick=this.tick;}
    }
@@ -81,7 +96,7 @@ export class GameRoom {
    const actual=applyDamage(target,target,target.maxHp*TERRAIN_CONFIG.toxicDps/NET.tickRate,0,0,false,true);
    if(actual){const event:DamageEvent={type:'damage',id:++this.eventId,round:this.round,tick:this.tick,attackerId:'environment',targetId:target.id,x:target.x,y:target.y,damage:actual,knockbackX:0,knockbackY:0,source:'environment'};this.events.push(event);this.hits.push(event);if(!target.alive)this.events.push({type:'death',id:++this.eventId,round:this.round,tick:this.tick,attackerId:'environment',targetId:target.id,x:target.x,y:target.y,source:'environment'});}
   }
-  this.skills.zones();this.projectiles=this.projectiles.filter(p=>p.expiresTick>this.tick);this.hits=this.hits.filter(h=>h.tick>this.tick-NET.tickRate);
+  this.skills.zones();for(const id of this.coverHits.keys())if(!this.projectiles.some(p=>p.id===id&&p.expiresTick>this.tick))this.coverHits.delete(id);this.projectiles=this.projectiles.filter(p=>p.expiresTick>this.tick);this.hits=this.hits.filter(h=>h.tick>this.tick-NET.tickRate);
  }
  drainEvents(){return this.events.splice(0);}
  resetTraining(){
@@ -95,5 +110,5 @@ export class GameRoom {
   if(point)return {...point};
   throw new Error('No safe spawn available');
  }
- snapshot():GameSnapshot{return {round:this.round,tick:this.tick,players:[...this.players.values()].map(p=>({...p,statuses:p.statuses.map(s=>({...s}))})),zones:this.zones.map(z=>({...z})),projectiles:this.projectiles.map(p=>({...p}))};}
+ snapshot():GameSnapshot{return {covers:this.map.walls.map(w=>({...w})),round:this.round,tick:this.tick,players:[...this.players.values()].map(p=>({...p,statuses:p.statuses.map(s=>({...s}))})),zones:this.zones.map(z=>({...z})),projectiles:this.projectiles.map(p=>({...p}))};}
 }

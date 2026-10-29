@@ -5,10 +5,10 @@ import {getCharacter} from './CharacterPresentation';
 import {CombatSymbol} from './CombatSymbol';
 import {CombatText} from './CombatText';
 import {GeometryVfx} from './GeometryVfx';
-export interface VisualEffect {x:number;y:number;text:string;color:string;life:number;total:number;radius?:number;symbol?:string;meme?:string;impact?:'ring'|'shockwave'|'heart'|'bonk'}
+export interface VisualEffect {x:number;y:number;text:string;color:string;life:number;total:number;radius?:number;symbol?:string;meme?:string;suppressGeometry?:boolean;impact?:'ring'|'shockwave'|'heart'|'bonk'}
 export class CombatVisuals {
  readonly symbols:CombatSymbol;readonly memes:CombatText;readonly geometry:GeometryVfx;
- constructor(scene:Phaser.Scene){this.symbols=new CombatSymbol(scene);this.memes=new CombatText(scene);this.geometry=new GeometryVfx(scene);}
+ constructor(scene:Phaser.Scene,dark=false){this.symbols=new CombatSymbol(scene);this.memes=new CombatText(scene,96,dark);this.geometry=new GeometryVfx(scene);}
  begin(){this.symbols.begin();this.memes.begin();this.geometry.begin();}
  prop(x:number,y:number,role:string,angle:number,time:number,attacking:boolean,hit:boolean,dashing=false,adrenaline=false,escape=false){
   const c=getCharacter(role),p=c.presentation;
@@ -50,7 +50,7 @@ export class CombatVisuals {
  }
  effect(e:VisualEffect){
   const progress=Math.max(0,Math.min(1,1-e.life/e.total)),color=Number.parseInt(e.color.replace('#',''),16);
-  if(e.radius){if(e.impact==='shockwave')this.geometry.shockwave(e.x,e.y,e.radius,progress,color);else this.geometry.impactRing(e.x,e.y,e.radius,progress,color);}
+  if(e.radius&&!e.suppressGeometry){if(e.impact==='shockwave')this.geometry.shockwave(e.x,e.y,e.radius,progress,color);else this.geometry.impactRing(e.x,e.y,e.radius,progress,color);}
   if(e.symbol)this.symbols.draw(e.x,e.y-12-progress*22,e.symbol,{fontSize:e.impact==='shockwave'?58:35,scale:1+.4*Math.sin(Math.min(1,progress*2)*Math.PI),rotation:e.impact==='bonk'?progress*.6:Math.sin(progress*Math.PI)*.2,alpha:1-progress,depth:45});
   if(e.text)this.memes.draw(e.x,e.y-27,e.text,{fontSize:e.radius&&e.radius>100?28:21,color:e.color,progress,punch:true,fade:true,float:40});
   if(e.meme)this.memes.draw(e.x,e.y+12,e.meme,{fontSize:18,color:e.color,progress,punch:true,fade:true,float:22,rotation:-.08});

@@ -4,7 +4,7 @@ import {SpawnManager,SPAWN_POINTS,type Point} from './shared/terrain/SpawnManage
 export {TERRAIN_CONFIG,TERRAIN_PROFILES,ENVIRONMENT_SKINS} from './shared/terrain/TerrainConfig';
 export {SpawnManager} from './shared/terrain/SpawnManager';
 export type Mud={x:number;y:number;rx:number;ry:number;points:Point[];sizeType?:SizeType;skin?:string};
-export type TerrainWall=Wall&{sizeType?:SizeType;skin?:string};
+export type TerrainWall=Wall&{sizeType?:SizeType;skin?:string;coverId?:string;hp?:number;maxHp?:number;state?:'intact'|'damaged'|'destroyed'};
 export type TerrainMap={walls:TerrainWall[];mud:Mud[];toxic?:Mud[];seed?:number;profile?:TerrainProfile;budget?:number;spawns?:Point[];spawnSafeRadius?:number};
 export const MUD_SPEED=C.mudSpeed;
 export const SPAWNS=SPAWN_POINTS;
@@ -53,7 +53,7 @@ export function generateTerrain(options:TerrainOptions|(()=>number)={}):TerrainM
     if(kind!=='obstacle'){candidate.x=(b.left+b.right)/2+(random()-.5)*(b.right-b.left)*.65-w/2;candidate.y=(b.top+b.bottom)/2+(random()-.5)*(b.bottom-b.top)*.45-h/2;}
     if(!TerrainValidator.placement(candidate,map,kind==='obstacle',cost,(opts.maxBudget??C.maxHazardBudget)-reserve))continue;
     const skin=ENVIRONMENT_SKINS[kind][opts.skins?Math.floor(skinRandom()*ENVIRONMENT_SKINS[kind].length):0];
-    if(kind==='obstacle')map.walls.push({...candidate,sizeType:size,skin});else{
+    if(kind==='obstacle')map.walls.push({...candidate,sizeType:size,skin,coverId:`cover-${map.walls.length+1}`,hp:C.coverHp[size],maxHp:C.coverHp[size],state:'intact'});else{
      const x=candidate.x+w/2,y=candidate.y+h/2,rx=w/2,ry=h/2,phase=random()*Math.PI*2;
      const points=Array.from({length:48},(_,j)=>{const a=j/48*Math.PI*2,r=.93+.045*Math.sin(a*3+phase)+.025*Math.cos(a*5-phase);return {x:x+Math.cos(a)*rx*r,y:y+Math.sin(a)*ry*r};});
      map[kind]!.push({x,y,rx,ry,points,sizeType:size,skin});

@@ -1,0 +1,51 @@
+{
+  "recordDate": "2026-10-29",
+  "timezone": "Asia/Shanghai",
+  "packageVersion": "0.1.0",
+  "protocolVersion": 16,
+  "gitHead": "d14090cd077f5b0ad670ca82da3acadd9c01fa96",
+  "gitStatusAtArchive": " M README.md\n M docs/TERRAIN_SYSTEM_MVP.md\n M package.json\n M server/GameRoom.ts\n M server/combat/CombatResolver.ts\n M server/combat/SkillSystem.ts\n M src/client/presentation/CombatText.ts\n M src/client/presentation/CombatVisuals.ts\n M src/main.ts\n M src/rules.ts\n M src/shared/GameConstants.ts\n M src/shared/NetworkProtocol.ts\n M src/shared/characters/CharacterDefinition.ts\n M src/shared/combat/CombatTypes.ts\n M src/shared/terrain/TerrainConfig.ts\n M src/terrain.ts\n M vite.config.ts\n?? artifacts/game-art/\n?? artifacts/vfx-playground/\n?? docs/ITEM_SYSTEM_V1.md\n?? docs/MBTI_Brawl_Art_VFX_Upgrade_V1.md\n?? docs/MBTI_Brawl_Minimal_Cartoon_HUD_Codex_Spec.md\n?? \"docs/TERRAIN_SYSTEM_MVP (1).md\"\n?? docs/report/ART_VFX_UPGRADE_V1_PLAN.md\n?? docs/report/DESTRUCTIBLE_COVER_REPORT.md\n?? docs/report/GAME_ART_PRESET_V1_REPORT.md\n?? docs/report/VFX_PLAYGROUND_V1_REPORT.md\n?? docs/version-records/\n?? src/client/art/\n?? tests/destructible-cover.ts\n?? tests/vfx-pool.ts\n?? vfx-playground.html\n",
+  "screenshots": [
+    {
+      "file": "screenshots/01-welcome.jpg",
+      "sha256": "579bd1a297d4db27e201f7c8fa7a1655c7672514f4ff208734e3efa16ecfa174"
+    },
+    {
+      "file": "screenshots/02-identity.jpg",
+      "sha256": "0c3a03b03f5229ac23ccdda0fe436acea0d9720d31da0fd25d7178c6207cf659"
+    },
+    {
+      "file": "screenshots/03-modes.jpg",
+      "sha256": "ce677e4c6524499086c2a8f041065e8150b591cc6fc28fc941fd708949d4f82d"
+    },
+    {
+      "file": "screenshots/04-characters.jpg",
+      "sha256": "4d9c970b637c115f82e9990c06f2de6542a3cd338984601f6ed33aa81294fedc"
+    },
+    {
+      "file": "screenshots/05-battle.jpg",
+      "sha256": "98a64ec39ab99c80e0ccf17fb98ca0eaea26b9e04a0f49f8157678d545684055"
+    },
+    {
+      "file": "screenshots/06-arena.jpg",
+      "sha256": "97f4a02ef2ab43c59241d7af2223a20165c5c79a9a632da22166ac4bc371b9ed"
+    },
+    {
+      "file": "screenshots/07-live-combat.jpg",
+      "sha256": "22c9e6ff870b4981ee12045384808e3ad904b523edeb14671df0761109e25b0b"
+    },
+    {
+      "file": "screenshots/08-spectator.jpg",
+      "sha256": "5116f0406696d24aa275eeb6e983e255f3d973edda62a5e8e56a8fcdc8468b15"
+    },
+    {
+      "file": "screenshots/09-ranking.jpg",
+      "sha256": "2f4e6c2291b5ebb2a2ba209418421462fc6655ef5d029eb5d5408bae7b8da2ca"
+    },
+    {
+      "file": "screenshots/10-lobby.jpg",
+      "sha256": "9c0555bef48306c83c1f664187bbe33b1430c7e2062537fbff5e20a23b6ae6c6"
+    }
+  ],
+  "scope": "Documentation and screenshots only; not a full source or data backup"
+}

@@ -49,7 +49,7 @@ export function startServer(port=Number(process.env.PORT)||3000,options:{leaderb
  });
  const simulation=setInterval(()=>{room.step();const events=room.drainEvents();if(events.length)io.emit('combat',events);},1000/NET.tickRate);
  const snapshots=setInterval(()=>io.emit('snapshot',room.snapshot()),1000/NET.snapshotRate);
- http.listen(port,'0.0.0.0',()=>{
+ http.listen(port,process.env.BRAWL_HOST||'0.0.0.0',()=>{
   const address=http.address();const actual=typeof address==='object'&&address?address.port:port;
   console.log(`Local: http://localhost:${actual}`);
   for(const list of Object.values(networkInterfaces()))for(const entry of list||[])if(entry.family==='IPv4'&&!entry.internal)console.log(`LAN:   http://${entry.address}:${actual}`);

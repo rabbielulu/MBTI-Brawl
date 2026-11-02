@@ -1,0 +1,25 @@
+[Unit]
+Description=MBTI Brawl authoritative game server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/mbti-brawl
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=BRAWL_HOST=127.0.0.1
+Environment=BRAWL_DATA_DIR=/var/lib/mbti-brawl
+EnvironmentFile=-/etc/mbti-brawl.env
+ExecStart=/usr/local/bin/node --import tsx server/GameServer.ts
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

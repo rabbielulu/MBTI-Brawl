@@ -31,7 +31,7 @@ export class LobbyFlow {
   try{const saved=JSON.parse(localStorage.getItem('mbti-lobby-identity')||'null');if(saved&&isPlayable(saved.mbti)&&typeof saved.nickname==='string')this.identity={mbti:saved.mbti,nickname:saved.nickname};}catch{}
   const params=new URLSearchParams(location.search);if(params.has('room')){this.requestedRoom=params.get('room')||'';this.showIdentity();}else this.home();
   window.addEventListener('keydown',event=>{
-   if(document.hidden||document.querySelector<HTMLDialogElement>('#dialog')?.open)return;
+   if(document.hidden||document.body.classList.contains('booting')||document.querySelector<HTMLDialogElement>('#dialog')?.open)return;
    const target=event.target instanceof Element?event.target:undefined;
    const editing=!!target?.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])');
    if(this.view==='home'&&event.key==='Enter'&&!editing&&!target?.closest('button,a')){event.preventDefault();this.showIdentity();return;}

@@ -125,3 +125,11 @@ npm run test:projectiles
 花园使用独立 `/garden` Socket.IO namespace，服务端确认跳跃和指定目标的牵手关系。参数在 `src/shared/garden/GardenConfig.ts`；验证命令：`pnpm test:garden`。当前以键鼠操作为验收目标，未提供触屏社交操作。
 
 投掷互动：选中附近玩家后点「🙌 投掷」先举到头顶，鼠标瞄准后左键扔出。被扔的人撞到场景边界会反弹，落地后躺下；短暂落地缓冲后可移动/跳跃起身。Q 可以放下或从别人手中下来。牵手连接在举起时断开，投掷不造成伤害。Z 坐下/起身。
+
+## GitHub Pages
+
+公开前端地址：https://rabbielulu.github.io/MBTI-Brawl/
+
+推送 `main` 后由 `.github/workflows/pages.yml` 自动安装依赖、构建并部署。Pages 构建使用 `VITE_BASE_PATH=/MBTI-Brawl/`；本地默认仍为 `/`。
+
+GitHub Pages 只托管前端，不运行 Node/Socket.IO 服务。未配置游戏服务器时，页面会明确提示；角色浏览可用，试炼场、多人乱斗、小小花园与周榜暂不可联机。日后可在仓库 Actions Variables 中设置 `VITE_SERVER_URL` 为公网 HTTPS 游戏服务器地址并重新运行部署；服务器需允许来自 Pages 域名的跨域连接。

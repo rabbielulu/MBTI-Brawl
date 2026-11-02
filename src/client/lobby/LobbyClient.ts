@@ -1,3 +1,4 @@
+import {gameServerUrl,requireGameServer} from '../Deployment';
 import type {Welcome,GameSnapshot,PlayerInput} from '../../shared/NetworkProtocol';
 import type {CombatEvent} from '../../shared/combat/CombatTypes';
 import {io,type Socket} from 'socket.io-client';
@@ -25,8 +26,8 @@ export class LobbyClient {
   });
  });}
  async enter(identity:PlayerIdentity,roomId?:string,botCount?:number,terrain?:{seed?:number;profile?:string}){
-  this.close();this.intentional=false;
-  const socket:Socket<LobbyServerEvents,LobbyClientEvents>=this.socket=io('/lobby',{auth:{protocolVersion:PROTOCOL_VERSION},reconnection:false,timeout:5000,autoConnect:false});
+  requireGameServer();this.close();this.intentional=false;
+  const socket:Socket<LobbyServerEvents,LobbyClientEvents>=this.socket=io(gameServerUrl('/lobby'),{auth:{protocolVersion:PROTOCOL_VERSION},reconnection:false,timeout:5000,autoConnect:false});
   socket.on('room:update',room=>this.receive(room));
   socket.on('match:welcome',welcome=>this.onMatch?.(welcome));
   socket.on('match:snapshot',snapshot=>this.bridge?.snapshot(snapshot));

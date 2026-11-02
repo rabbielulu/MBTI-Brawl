@@ -1,3 +1,4 @@
+import {assetUrl} from './client/Deployment';
 import {ItemPresentation} from './client/presentation/ItemPresentation';
 import './client/ui/items.css';
 import {installHudMotion} from './client/ui/HudMotion';
@@ -188,7 +189,7 @@ export class Arena extends Phaser.Scene {
   localShotId=0;
   attackAt=0; skillAt=0; hazardAt=0; elapsed=0; moving=false; ended=false; stamp=0;
   constructor(){ super('Arena'); }
-  preload(){this.load.image('item-icons','/items/item-icons.png');}
+  preload(){this.load.image('item-icons',assetUrl('/items/item-icons.png'));}
   create(){ scene=this; this.g=this.add.graphics().setDepth(0);this.characterGraphics=this.add.graphics().setDepth(10);this.visuals=new CombatVisuals(this,false);this.art=new CombatArt(this);this.itemPresentation=new ItemPresentation(this); this.keys=this.input.keyboard!.addKeys('W,A,S,D,SPACE,ESC,F3') as typeof this.keys;
     this.desktopInput=new DesktopInputAdapter(()=>({moveX:Number(this.keys.D.isDown)-Number(this.keys.A.isDown),moveY:Number(this.keys.S.isDown)-Number(this.keys.W.isDown),attack:this.input.activePointer.isDown&&this.input.activePointer.leftButtonDown()}));
     mobileInput.skillAimMode=kit.skillAimMode;

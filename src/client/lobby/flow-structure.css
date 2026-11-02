@@ -76,3 +76,5 @@ body .bottom-hud .health{display:none!important}
 #flow-root .lobby-wait button[aria-pressed=true]{background:#e6dcf8;border-color:#a68be8;box-shadow:0 2px 0 #d6c5e8}
 .lobby-wait small{width:100%;text-align:right;font-size:10px}
 @media(max-width:600px){.lobby-wait:not([hidden]){justify-content:flex-start}.lobby-wait small{text-align:left}#flow-root #lobby-room-code{margin:6px 0 0}}
+
+.pages-server-note{margin:0;padding:12px 24px;background:#fff3cc;color:#624818;text-align:center;font-size:13px;line-height:1.6}

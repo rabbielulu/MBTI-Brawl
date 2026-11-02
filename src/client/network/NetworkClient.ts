@@ -1,3 +1,4 @@
+import {gameServerUrl,requireGameServer} from '../Deployment';
 import type {LobbyClient} from '../lobby/LobbyClient';
 import {ProjectileTimeline} from './ProjectileTimeline';
 import type {MBTIType} from '../../shared/characters/CharacterDefinition';
@@ -20,8 +21,8 @@ export class NetworkClient {
  socket?:Socket<ServerEvents,ClientEvents>; id=''; connected=false; status='DISCONNECTED';ping=0;tick=0;
  snapshots:{at:number;value:GameSnapshot}[]=[];pingTimer?:ReturnType<typeof setInterval>;seq=0;nextSend=0;
  connect(nickname:string,mbti:MBTIType='ENTP'):Promise<Welcome> {
-  this.close(); this.status='CONNECTING';this.id='';this.seq=0;this.nextSend=0;this.lastHitId=0;this.combatQueue=[];
-  const socket:Socket<ServerEvents,ClientEvents>=this.socket=io({auth:{nickname,mbti},reconnection:false,timeout:5000,autoConnect:false});
+  requireGameServer();this.close(); this.status='CONNECTING';this.id='';this.seq=0;this.nextSend=0;this.lastHitId=0;this.combatQueue=[];
+  const socket:Socket<ServerEvents,ClientEvents>=this.socket=io(gameServerUrl('')||undefined,{auth:{nickname,mbti},reconnection:false,timeout:5000,autoConnect:false});
   return new Promise((resolve,reject)=>{
    const fail=(reason:string)=>{this.status=reason;this.close();reject(new Error(reason));};
    const timeout=setTimeout(()=>fail('连接超时，请确认 LAN 服务已启动。'),6000);

@@ -1,3 +1,4 @@
+import {gameServerUrl,needsGameServer,serverMissingMessage} from '../Deployment';
 import {gardenPose,posePath,type GardenPose} from './GardenPose';
 import {io,type Socket} from 'socket.io-client';
 import {GARDEN as C,gardenInput,canGardenHold,canGardenLift,type GardenSnapshot,type GardenPlayer} from '../../shared/garden/GardenConfig';
@@ -22,7 +23,7 @@ export class GardenMode {
   const $=<T extends HTMLElement=HTMLElement>(q:string)=>this.root.querySelector<T>(q)!;
   $('#garden-exit').onclick=exit;$('#garden-fullscreen').onclick=()=>{if(document.fullscreenElement)void document.exitFullscreen();else void document.documentElement.requestFullscreen().catch(()=>{this.status('浏览器暂不支持全屏。');});};
   $('#garden-help').onclick=()=>{const help=$<HTMLElement>('.garden-help');help.hidden=!help.hidden;$('#garden-help').setAttribute('aria-expanded',String(!help.hidden));this.clear();};
-  this.socket=io('/garden',{auth:identity,reconnection:false,timeout:8000});
+  this.socket=io(gameServerUrl('/garden'),{auth:identity,reconnection:false,timeout:8000,autoConnect:!needsGameServer()});
   $('#garden-add-bots').onclick=()=>this.socket.emit('garden:bots:add');
   $('#garden-clear-bots').onclick=()=>this.socket.emit('garden:bots:clear');
   this.socket.on('garden:bots:result',(message:string)=>this.status(message));
@@ -31,6 +32,7 @@ export class GardenMode {
   this.socket.on('garden:error',(message:string)=>this.status(message));
   this.socket.on('connect_error',()=>this.status('连接花园失败，请离开后重试，并确认服务器已启动。'));
   this.socket.on('disconnect',()=>{this.clear();this.paused=true;this.status('与花园的连接已断开，请离开后重新进入。');});
+  if(needsGameServer()){this.status(serverMissingMessage);$('#garden-count').textContent='联机服务尚未配置';($('#garden-add-bots') as HTMLButtonElement).disabled=true;($('#garden-clear-bots') as HTMLButtonElement).disabled=true;}
   const opts={signal:this.abort.signal};
   window.addEventListener('keydown',e=>{if(!this.root.isConnected||this.paused)return;const key=e.key.toLowerCase();if(key===' '&&(e.target as Element)?.closest('button'))return;if(['w','a','s','d',' ','e','z','q','arrowup','arrowdown','arrowleft','arrowright'].includes(key)){e.preventDefault();this.keys.add(key);if(!e.repeat){if(key===' ')this.input.jump=true;if(key==='e')this.input.wave=true;if(key==='z')this.input.sit=true;if(key==='q'){this.input.releaseHold=true;this.selectedTarget=null;}}this.input.active=true;}},opts);
   window.addEventListener('keyup',e=>this.keys.delete(e.key.toLowerCase()),opts);

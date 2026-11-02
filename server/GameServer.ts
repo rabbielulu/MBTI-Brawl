@@ -20,14 +20,22 @@ export function startServer(port=Number(process.env.PORT)||3000,options:{leaderb
  if(supabaseUrl&&!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(supabaseUrl))throw new Error('SUPABASE_URL must be the hosted Supabase HTTPS project URL.');
  const leaderboard=port!==0&&supabaseUrl&&supabaseKey?new SupabaseLeaderboard(ledgerPath!,supabaseUrl,supabaseKey):new WeeklyLeaderboard(ledgerPath);
  const root=fileURLToPath(new URL('../dist/',import.meta.url));
- const mime:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png'};
+ const mime:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.avif':'image/avif'};
  const http=createServer((req,res)=>{
   let pathname:string;try{pathname=decodeURIComponent(new URL(req.url||'/', 'http://localhost').pathname);}catch{res.writeHead(400).end();return;}
   if(pathname==='/api/leaderboard/weekly'&&req.method==='GET'){res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');if(leaderboard instanceof SupabaseLeaderboard){void leaderboard.weeklyOnline().then(data=>res.end(JSON.stringify(data))).catch(()=>{res.statusCode=503;res.end(JSON.stringify({error:'排行榜暂时不可用，请稍后重试。'}));});}else res.end(JSON.stringify(leaderboard.weekly()));return;}
-  if(pathname==='/health'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({ok:true,protocolVersion:PROTOCOL_VERSION,players:room.players.size,tick:room.tick,lobbyRooms:lobby.registry.rooms.size,lobbyPlayers:lobby.registry.playerCount}));return;}
+  if(pathname==='/health'){res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/json');res.end(JSON.stringify({ok:true,protocolVersion:PROTOCOL_VERSION,players:room.players.size,tick:room.tick,lobbyRooms:lobby.registry.rooms.size,lobbyPlayers:lobby.registry.playerCount}));return;}
   const path=resolve(root,'.'+(pathname==='/'?'/index.html':pathname));
   if(!path.startsWith(root)||!existsSync(path)||!statSync(path).isFile()){res.writeHead(404).end('Build missing or file not found. Run npm run build first.');return;}
-  res.setHeader('Content-Type',mime[extname(path)]||'application/octet-stream');createReadStream(path).pipe(res);
+  if(req.method!=='GET'&&req.method!=='HEAD'){res.writeHead(405,{'Allow':'GET, HEAD','Cache-Control':'no-store'}).end();return;}
+  const stat=statSync(path),etag=`W/"${stat.size.toString(16)}-${stat.mtimeMs.toString(16)}"`;
+  const hashed=/^\/assets\/.+-[A-Za-z0-9_-]{8}\.[a-z0-9]+$/.test(pathname);
+  res.setHeader('Cache-Control',hashed?'public, max-age=31536000, immutable':extname(path)==='.html'?'no-cache':'public, max-age=0, must-revalidate');
+  res.setHeader('ETag',etag);res.setHeader('Last-Modified',stat.mtime.toUTCString());
+  res.setHeader('Content-Type',mime[extname(path)]||'application/octet-stream');
+  if(req.headers['if-none-match']===etag){res.writeHead(304).end();return;}
+  res.setHeader('Content-Length',stat.size);if(req.method==='HEAD'){res.end();return;}
+  createReadStream(path).pipe(res);
  });
  const io=new Server<ClientEvents,ServerEvents>(http,{maxHttpBufferSize:8192});
  const garden=installGarden(io);

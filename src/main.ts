@@ -1,4 +1,6 @@
-import {assetUrl} from './client/Deployment';
+import {installPerformanceDiagnostics} from './client/PerformanceDiagnostics';
+import {images} from './client/AssetManifest';
+import {loadImages,loadedImage,loadingTask} from './client/AssetLoader';
 import {ItemPresentation} from './client/presentation/ItemPresentation';
 import './client/ui/items.css';
 import {installHudMotion} from './client/ui/HudMotion';
@@ -90,7 +92,7 @@ function settings() {
   $('reset-viewport').onclick=()=>{scene?.clearInput();resetViewport();};
   $('enable-touch').onchange=()=>setTouch(($('enable-touch') as HTMLInputElement).checked);
   $('show-touch-debug').onchange=()=>{mobileInput.showDebug=($('show-touch-debug') as HTMLInputElement).checked;};
-  $('exit').onclick=()=>{dialog.close();active=false;network.close();multiplayer=false;document.body.classList.remove('lan-mode');$('network-hud').hidden=true;scene.reset();$('start-overlay').hidden=false;scene.input.keyboard!.enabled=false;flow.home();};
+  $('exit').onclick=()=>{dialog.close();active=false;network.close();multiplayer=false;document.body.classList.remove('lan-mode');$('network-hud').hidden=true;scene?.reset();$('start-overlay').hidden=false;if(scene)scene.input.keyboard!.enabled=false;flow.home();};
 }
 function suggestTouch(){
   if(navigator.maxTouchPoints<=0||touchPrompted||mobileInput.enabled)return;
@@ -135,6 +137,7 @@ $('entry-form').addEventListener('submit', async (event) => {
     $('mbti-error').textContent = isPlayable(type)?'此人格请使用四人 LAN 模式。':'请输入有效的 16 型 MBTI 人格。';
     return;
   }
+  try{await prepareBattle();}catch{return;}
   selectedType=type as MBTIType;
   $('connection-error').textContent='';
   multiplayer=($('game-mode') as HTMLSelectElement).value==='lan';
@@ -189,8 +192,7 @@ export class Arena extends Phaser.Scene {
   localShotId=0;
   attackAt=0; skillAt=0; hazardAt=0; elapsed=0; moving=false; ended=false; stamp=0;
   constructor(){ super('Arena'); }
-  preload(){this.load.image('item-icons',assetUrl('/items/item-icons.png'));}
-  create(){ scene=this; this.g=this.add.graphics().setDepth(0);this.characterGraphics=this.add.graphics().setDepth(10);this.visuals=new CombatVisuals(this,false);this.art=new CombatArt(this);this.itemPresentation=new ItemPresentation(this); this.keys=this.input.keyboard!.addKeys('W,A,S,D,SPACE,ESC,F3') as typeof this.keys;
+  create(){ if(!this.textures.exists('item-icons'))this.textures.addImage('item-icons',loadedImage(images.items));scene=this; this.g=this.add.graphics().setDepth(0);this.characterGraphics=this.add.graphics().setDepth(10);this.visuals=new CombatVisuals(this,false);this.art=new CombatArt(this);this.itemPresentation=new ItemPresentation(this); this.keys=this.input.keyboard!.addKeys('W,A,S,D,SPACE,ESC,F3') as typeof this.keys;
     this.desktopInput=new DesktopInputAdapter(()=>({moveX:Number(this.keys.D.isDown)-Number(this.keys.A.isDown),moveY:Number(this.keys.S.isDown)-Number(this.keys.W.isDown),attack:this.input.activePointer.isDown&&this.input.activePointer.leftButtonDown()}));
     mobileInput.skillAimMode=kit.skillAimMode;
     this.input.mouse!.disableContextMenu(); this.cameras.main.setBackgroundColor('#e8f0eb');
@@ -198,7 +200,7 @@ export class Arena extends Phaser.Scene {
     this.input.keyboard!.on('keydown-F3', (e:KeyboardEvent)=>{e.preventDefault();debugNetwork=!debugNetwork;$('network-debug').setAttribute('aria-pressed',String(debugNetwork));});
     this.input.keyboard!.on('keydown-ESC', ()=>{if(!dialogOpen)settings();});
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{if(active&&!dialogOpen&&!mobileInput.enabled&&p.rightButtonDown())this.desktopInput.skill=true;});
-    window.addEventListener('blur',()=>this.clearInput());document.addEventListener('visibilitychange',()=>{if(document.hidden)this.clearInput();});window.addEventListener('resize',()=>this.clearInput()); this.input.keyboard!.enabled = false; this.reset();
+    window.addEventListener('blur',()=>this.clearInput());document.addEventListener('visibilitychange',()=>{if(document.hidden)this.clearInput();});window.addEventListener('resize',()=>this.clearInput()); this.input.keyboard!.enabled = false; this.reset();arenaReady?.();
   }
   clearInput(){ this.desktopInput?.clear();mobileInput.clear();if(multiplayer)network.send(0,0,this.angle,true);this.input.keyboard?.resetKeys(); this.input.activePointer.reset(); }
   reset(){this.art?.clear();this.itemPresentation?.clear();$('combat-status').hidden=true;$('reset').title='重置训练';$('reset').querySelector('span')!.textContent='重置训练';this.networkRound=-1;this.predictedDashUntil=0;this.hitFlashes.clear();document.querySelector('.arena-hud div div>span')!.textContent='自由练习 · 无时间限制';document.querySelector('.targets small')!.innerHTML='/ 04<br>训练靶存活';this.terrain=generateTerrain();this.hazardAt=0;this.px=700;this.py=710;this.hp=100;this.energy=0;this.shots=[];this.effects=[];this.elapsed=0;this.attackAt=0;this.skillAt=0;this.ended=false;this.clearInput();$('result').hidden=true;
@@ -376,7 +378,18 @@ export class Arena extends Phaser.Scene {
 
   }
 }
-new Phaser.Game({type:Phaser.AUTO,parent:'game',backgroundColor:'#e8f0eb',scale:{mode:Phaser.Scale.RESIZE,width:'100%',height:'100%'},scene:Arena,render:{antialias:true},input:{keyboard:true,mouse:true}});
+let battleReady:Promise<void>|undefined;let arenaReady:(()=>void)|undefined;let battleGame:Phaser.Game|undefined;let battleInitialized=false;
+function prepareBattle(){
+ if(battleReady)return battleReady;
+ const job=loadingTask('正在准备战斗资源',async progress=>{
+  performance.mark('battle-assets-start');await loadImages([images.items],done=>progress(done,2));performance.mark('battle-image-decoded');
+  if(!battleInitialized)await new Promise<void>((resolve,reject)=>{
+   const timeout=setTimeout(()=>{battleGame?.destroy(true);battleGame=undefined;arenaReady=undefined;reject(Error('场景准备超时'));},20000);arenaReady=()=>{clearTimeout(timeout);battleInitialized=true;arenaReady=undefined;resolve();};
+   battleGame=new Phaser.Game({type:Phaser.AUTO,parent:'game',backgroundColor:'#e8f0eb',scale:{mode:Phaser.Scale.RESIZE,width:'100%',height:'100%'},scene:Arena,render:{antialias:true},input:{keyboard:true,mouse:true}});
+  });
+  progress(2,2);performance.mark('battle-assets-ready');performance.measure('battle-assets','battle-assets-start','battle-assets-ready');
+ });battleReady=job;void job.catch(()=>{if(battleReady===job)battleReady=undefined;});return job;
+}
 
 flow=new LobbyFlow(settings,(welcome,client)=>{
   network.attach(welcome,client);multiplayer=true;active=false;scene.reset();
@@ -391,4 +404,6 @@ flow=new LobbyFlow(settings,(welcome,client)=>{
   $('toast').hidden=true;
   document.body.classList.add('lan-mode','match-mode');document.body.classList.toggle('practice-mode',client.room?.mode==='practice');$('network-hud').hidden=true;$('start-overlay').hidden=true;
   active=true;scene.input.keyboard!.enabled=true;suggestTouch();
-},()=>{active=false;scene?.clearInput();scene?.art?.clear();network.close();multiplayer=false;document.body.classList.remove('lan-mode','match-mode','practice-mode');if(scene?.input.keyboard)scene.input.keyboard.enabled=false;});
+},()=>{active=false;scene?.clearInput();scene?.art?.clear();network.close();multiplayer=false;document.body.classList.remove('lan-mode','match-mode','practice-mode');if(scene?.input.keyboard)scene.input.keyboard.enabled=false;},prepareBattle);
+
+installPerformanceDiagnostics();

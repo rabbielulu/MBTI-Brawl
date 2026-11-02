@@ -133,3 +133,7 @@ npm run test:projectiles
 推送 `main` 后由 `.github/workflows/pages.yml` 自动安装依赖、构建并部署。Pages 构建使用 `VITE_BASE_PATH=/MBTI-Brawl/`；本地默认仍为 `/`。
 
 GitHub Pages 只托管前端，不运行 Node/Socket.IO 服务。未配置游戏服务器时，页面会明确提示；角色浏览可用，试炼场、多人乱斗、小小花园与周榜暂不可联机。日后可在仓库 Actions Variables 中设置 `VITE_SERVER_URL` 为公网 HTTPS 游戏服务器地址并重新运行部署；服务器需允许来自 Pages 域名的跨域连接。
+
+## Supabase 云端周榜
+
+新增 Supabase Postgres 接入、服务端环境变量模板及建表 SQL。配置方法和线上验收见 [Supabase 接入说明](docs/SUPABASE.md)。实时对战继续使用 Node.js / Socket.IO，仍需单独托管。

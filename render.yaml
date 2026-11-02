@@ -1,0 +1,28 @@
+# Review Render's quoted price before creating this paid service.
+services:
+  - type: web
+    name: mbti-brawl
+    runtime: node
+    plan: 0.5c-512mb
+    region: singapore
+    buildCommand: npx --yes pnpm@10 install --frozen-lockfile && npx --yes pnpm@10 run build
+    startCommand: npm run start:lan
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    disk:
+      name: brawl-retry-ledger
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      - key: NODE_ENV
+        value: production
+      - key: BRAWL_DATA_DIR
+        value: /var/data
+      - key: VITE_BASE_PATH
+        value: /
+      - key: SUPABASE_URL
+        value: https://sulgpctvstocsjpjrhji.supabase.co
+      - key: SUPABASE_SECRET_KEY
+        sync: false

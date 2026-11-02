@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node tests/combat.mjs && node tests/terrain.mjs",
-    "start:lan": "tsx server/GameServer.ts",
+    "start:lan": "node --env-file-if-exists=.env --import tsx server/GameServer.ts",
     "test:lobby": "tsx tests/lobby.ts && tsx tests/lobby-network.ts",
     "test:network": "tsx tests/multiplayer-combat.ts && tsx tests/network.ts",
     "test:characters": "tsx tests/characters.ts && tsx tests/character-network.ts",
@@ -28,7 +28,8 @@
     "test:items": "tsx tests/items.ts",
     "test:cover": "tsx tests/destructible-cover.ts",
     "test:vfx": "tsx tests/vfx-pool.ts",
-    "test:garden": "tsx tests/garden.ts && tsx tests/garden-bots.ts && tsx tests/garden-throw.ts && tsx tests/garden-network.ts && tsx tests/garden-throw-network.ts"
+    "test:garden": "tsx tests/garden.ts && tsx tests/garden-bots.ts && tsx tests/garden-throw.ts && tsx tests/garden-network.ts && tsx tests/garden-throw-network.ts",
+    "test:supabase": "node --import tsx tests/supabase-leaderboard.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0",

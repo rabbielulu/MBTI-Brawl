@@ -5,7 +5,7 @@ services:
     runtime: node
     plan: 0.5c-512mb
     region: singapore
-    buildCommand: npx --yes pnpm@10 install --frozen-lockfile && npx --yes pnpm@10 run build
+    buildCommand: npx --yes pnpm@10 install --frozen-lockfile --prod=false && npx --yes pnpm@10 run build
     startCommand: npm run start:lan
     healthCheckPath: /health
     autoDeployTrigger: off

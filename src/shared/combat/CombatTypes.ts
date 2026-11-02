@@ -5,6 +5,9 @@ export interface AttackDefinition {
   meleeRange:number; meleeArc:number;
 }
 export type CombatEvent =
+ | {type:'item';id:number;round:number;tick:number;action:'spawn'|'picked'|'expired'|'shield-broken';x:number;y:number;pickupType:import('../ItemConfig').PickupType;playerId?:string;pickupId?:string}
+ | {type:'sniper';id:number;round:number;tick:number;attackerId:string;x:number;y:number;endX:number;endY:number;targetId?:string;result:'miss'|'shield'|'kill'}
+
  | {type:'cover';id:number;round:number;tick:number;attackerId:string;coverId:string;x:number;y:number;damage:number;hp:number;destroyed:boolean}
 
  | {type:'cast';id:number;round:number;tick:number;attackerId:string;x:number;y:number;skillId:string;ultimate:boolean;radius:number}

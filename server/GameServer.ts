@@ -1,3 +1,4 @@
+import {installGarden} from './garden/installGarden';
 import {WeeklyLeaderboard} from './leaderboard/WeeklyLeaderboard';
 import {installLobby} from './lobby/installLobby';
 import { createServer } from 'node:http';
@@ -23,6 +24,7 @@ export function startServer(port=Number(process.env.PORT)||3000,options:{leaderb
   res.setHeader('Content-Type',mime[extname(path)]||'application/octet-stream');createReadStream(path).pipe(res);
  });
  const io=new Server<ClientEvents,ServerEvents>(http,{maxHttpBufferSize:8192});
+ const garden=installGarden(io);
  const room=new GameRoom();
  const lobby=installLobby(io,()=>{const address=http.address();return address&&typeof address==='object'?address.port:port;},leaderboard);
  io.on('connection',socket=>{
@@ -46,6 +48,6 @@ export function startServer(port=Number(process.env.PORT)||3000,options:{leaderb
   console.log(`Local: http://localhost:${actual}`);
   for(const list of Object.values(networkInterfaces()))for(const entry of list||[])if(entry.family==='IPv4'&&!entry.internal)console.log(`LAN:   http://${entry.address}:${actual}`);
  });
- return {http,io,room,leaderboard,lobby:lobby.registry,close:()=>{lobby.close();clearInterval(simulation);clearInterval(snapshots);io.close();http.closeAllConnections();}};
+ return {http,io,room,leaderboard,lobby:lobby.registry,close:()=>{garden.close();lobby.close();clearInterval(simulation);clearInterval(snapshots);io.close();http.closeAllConnections();}};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))startServer();

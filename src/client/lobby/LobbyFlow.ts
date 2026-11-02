@@ -1,3 +1,4 @@
+import {GardenMode} from '../garden/GardenMode';
 import {requestGameFullscreen,autoFullscreenOnBattle} from '../ui/FullscreenButton';
 import {characterFaceSvg} from '../presentation/CharacterFace';
 import {characterCard,characterAbilities,escapeHtml} from '../presentation/CharacterCard';
@@ -12,10 +13,11 @@ import {CHARACTERS,getCharacter} from '../presentation/CharacterPresentation';
 import {PLAYABLE_TYPES,isPlayable} from '../../shared/characters/CharacterDatabase';
 import type {LobbyRoomState,PlayerIdentity} from '../../shared/LobbyProtocol';
 import './lobby.css';
-type FlowView='home'|'identity'|'modes'|'ranking'|'characters'|'room-entry'|'practice-confirm'|'lobby'|'match';
+type FlowView='home'|'identity'|'modes'|'ranking'|'characters'|'room-entry'|'practice-confirm'|'lobby'|'match'|'garden';
 /** Lobby UI presents authoritative match state; gameplay stays in the Phaser adapter. */
 export class LobbyFlow {
  private characterReturn:'modes'|'lobby'|'match'='modes';private identityReturn:'home'|'modes'|'lobby'='home';private returningToModes=false;
+ private garden?:GardenMode;
  private conclusion?:MatchConclusion;
  readonly spectator=new SpectatorController();
  root:HTMLDivElement;client:LobbyClient;view:FlowView='home';private editing=false;private identity:PlayerIdentity={mbti:'ENTP',nickname:''};private requestedRoom?:string;private renderKey='';private timer:ReturnType<typeof setInterval>;private disconnectMessage='';private attempt=0;private displayedRoom?:LobbyRoomState;private addingBot=false;private startingDebug=false;private botMessage='';
@@ -42,7 +44,7 @@ export class LobbyFlow {
    if(direction){event.preventDefault();event.stopImmediatePropagation();if(!this.disconnectMessage){this.spectator.switch(direction);this.updateMatch();}}
   },true);
   this.timer=setInterval(()=>this.updateStatus(),200);
-  window.addEventListener('pagehide',()=>this.client.close());
+  window.addEventListener('pagehide',()=>{this.garden?.destroy();this.garden=undefined;this.client.close();});
   window.addEventListener('pageshow',event=>{if(event.persisted){const params=new URLSearchParams(location.search);this.requestedRoom=params.has('room')?params.get('room')||'':undefined;this.requestedRoom!==undefined?this.showIdentity():this.home();}});
  }
  private element<T extends HTMLElement=HTMLElement>(id:string){return this.root.querySelector<T>(`#${id}`)!;}
@@ -50,7 +52,7 @@ export class LobbyFlow {
  private setUrl(roomId?:string){const url=new URL(location.href);if(roomId!==undefined)url.searchParams.set('room',roomId);else url.searchParams.delete('room');history.replaceState(null,'',url);}
  private remember(){try{localStorage.setItem('mbti-lobby-identity',JSON.stringify(this.identity));}catch{}}
  private fullscreenCleanup?:()=>void;
- private leaveGame(){this.fullscreenCleanup?.();const wasPlaying=!!this.client.room?.match||this.view==='match';this.attempt++;this.conclusion?.destroy();this.conclusion=undefined;this.spectator.reset();document.body.classList.remove('spectator-mode','practice-mode');this.returningToModes=true;this.client.close();if(wasPlaying)this.stopMatch();this.returningToModes=false;document.querySelector('#match-ui')?.remove();this.displayedRoom=undefined;this.disconnectMessage='';this.editing=false;this.botMessage='';this.requestedRoom=undefined;this.setUrl();}
+ private leaveGame(){this.garden?.destroy();this.garden=undefined;this.fullscreenCleanup?.();const wasPlaying=!!this.client.room?.match||this.view==='match';this.attempt++;this.conclusion?.destroy();this.conclusion=undefined;this.spectator.reset();document.body.classList.remove('spectator-mode','practice-mode');this.returningToModes=true;this.client.close();if(wasPlaying)this.stopMatch();this.returningToModes=false;document.querySelector('#match-ui')?.remove();this.displayedRoom=undefined;this.disconnectMessage='';this.editing=false;this.botMessage='';this.requestedRoom=undefined;this.setUrl();}
  home(){this.leaveGame();this.view='home';this.shell(`<section class="welcome-stage" data-design-node="32:69"><img class="welcome-person" src="/figma-flow/welcome.png" alt="欢迎来到 MBTI 大乱斗"><h1 class="welcome-title" aria-label="MBTI大乱斗"><span>MBTI</span><span>Brawl</span></h1><button id="flow-enter" class="welcome-enter">Enter <span aria-hidden="true">↗</span></button><p class="welcome-note">16 PERSONALITIES. ONE BIG MESS.</p></section>`);this.element('flow-enter').onclick=()=>{this.identityReturn='home';this.showIdentity();};}
  private showIdentity(editing=false){
   this.attempt++;this.editing=editing;this.view='identity';this.shell(`<section class="identity-stage" data-design-node="11:274"><div class="identity-paper"><img class="identity-person" src="/figma-flow/identity.png" alt="准备创建你的角色"><button id="identity-back" class="identity-close" aria-label="关闭角色创建"><img src="/figma-flow/close.svg" alt=""></button><form id="identity-form" novalidate><div class="flow-kicker">MAKE IT YOURS</div><h1>创建你的角色</h1><label for="identity-mbti">输入你的 MBTI</label><select id="identity-mbti">${PLAYABLE_TYPES.map(type=>`<option value="${type}">${type} · ${CHARACTERS[type].nickname}</option>`).join('')}</select><label for="identity-nickname">输入你的昵称 <small>1–12 个字符</small></label><input id="identity-nickname" maxlength="24" autocomplete="nickname" placeholder="朋友们怎么叫你？" aria-describedby="identity-error"><p id="identity-room-note"></p><p id="identity-error" role="alert"></p><button id="identity-submit" type="submit" class="flow-primary">确认 ↗</button></form></div></section>`);
@@ -67,9 +69,13 @@ export class LobbyFlow {
   };
  }
  private showModes(){
-  this.view='modes';this.editing=false;this.setUrl();this.shell(`<section class="mode-stage" data-design-node="11:254"><div class="mode-persona"><div id="mode-character"></div><button id="flow-change-character" class="change-character" aria-label="更换人格"><img src="/figma-flow/change.svg" alt=""></button><button id="flow-edit-identity" class="flow-text">修改昵称 / 角色资料</button></div><div class="mode-choices"><button id="flow-practice" class="mode-choice"><small>MODE 01</small><b>试炼场</b><span>自由练习 · 随时换人格 ↗</span></button><button id="flow-multiplayer" class="mode-choice"><small>MODE 02</small><b>多人乱斗</b><span>邀请朋友 · 最后存活者获胜 ↗</span></button><button id="flow-garden" class="mode-choice" disabled><small>MODE 03 · COMING SOON</small><b>小小花园</b><span>放松一下，未来在这里相遇 · 暂未开放</span></button></div></section>`);
+  this.view='modes';this.editing=false;this.setUrl();this.shell(`<section class="mode-stage" data-design-node="11:254"><div class="mode-persona"><div id="mode-character"></div><button id="flow-change-character" class="change-character" aria-label="更换人格"><img src="/figma-flow/change.svg" alt=""></button><button id="flow-edit-identity" class="flow-text">修改昵称 / 角色资料</button></div><div class="mode-choices"><button id="flow-practice" class="mode-choice"><small>MODE 01</small><b>试炼场</b><span>自由练习 · 随时换人格 ↗</span></button><button id="flow-multiplayer" class="mode-choice"><small>MODE 02</small><b>多人乱斗</b><span>邀请朋友 · 最后存活者获胜 ↗</span></button><button id="flow-garden" class="mode-choice"><small>MODE 03</small><b>小小花园</b><span>牵手 · 叠罗汉 · 一起躺平 ↗</span></button></div></section>`);
   const ranking=this.element('flow-brand');ranking.id='flow-ranking';ranking.className='weekly-entry';ranking.innerHTML='<span class="weekly-entry-icon"><img src="/figma-flow/trophy.svg" alt=""></span><span>本周排行</span>';
-  this.element('mode-character').innerHTML=characterCard(this.identity.mbti,this.identity.nickname);this.element('flow-change-character').onclick=()=>this.openCharacterBrowser('modes');this.element('flow-edit-identity').onclick=()=>{this.identityReturn='modes';this.showIdentity();};this.element('flow-ranking').onclick=()=>void this.showRanking();this.element('flow-practice').onclick=()=>this.showPracticeConfirm();this.element('flow-multiplayer').onclick=()=>this.showRoomEntry();
+  this.element('mode-character').innerHTML=characterCard(this.identity.mbti,this.identity.nickname);this.element('flow-change-character').onclick=()=>this.openCharacterBrowser('modes');this.element('flow-edit-identity').onclick=()=>{this.identityReturn='modes';this.showIdentity();};this.element('flow-ranking').onclick=()=>void this.showRanking();this.element('flow-practice').onclick=()=>this.showPracticeConfirm();this.element('flow-multiplayer').onclick=()=>this.showRoomEntry();this.element('flow-garden').onclick=()=>this.showGarden();
+ }
+ private showGarden(){
+  this.leaveGame();this.view='garden';this.root.hidden=true;
+  this.garden=new GardenMode(this.identity,()=>{this.leaveGame();this.showModes();});
  }
  private async showRanking(){
   this.view='ranking';this.shell('<section class="weekly-ranking"><button id="ranking-back" class="flow-text">← 返回玩法菜单</button><header><h1>本周胜场榜</h1><p id="ranking-period"></p></header><p class="ranking-rule">多人乱斗获胜 +1 · 同胜场并列 · 北京时间每周一 00:00 更新</p><div id="ranking-content" role="status" aria-live="polite">正在加载排行榜…</div><p class="ranking-identity-note">当前按昵称累计：同名合并，改名后分开统计。试炼场、平局和机器人获胜不计入。展示前 100 位。</p><button id="ranking-refresh" class="flow-secondary">刷新榜单</button></section>');

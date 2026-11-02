@@ -19,22 +19,22 @@ export class MatchSession {
  }
  get protectionEnd(){return this.startAt;}
  input(id:string,input:PlayerInput){if(this.phase==='PLAYING'&&this.players.get(id)?.connected&&this.players.get(id)?.alive)this.game.input(id,input);}
- disconnect(id:string,now:number){const p=this.players.get(id);if(!p)return;p.connected=false;this.grace.set(id,now+10000);this.game.inputs.get(id)!.time=-Infinity;}
+ disconnect(id:string,now:number){const p=this.players.get(id);if(!p)return;p.connected=false;this.game.items.clearPlayer(this.game.players.get(id)!);this.grace.set(id,now+10000);this.game.inputs.get(id)!.time=-Infinity;}
  reconnect(id:string){const p=this.players.get(id);if(p){p.connected=true;this.grace.delete(id);}}
  eliminate(id:string,reason:NonNullable<MatchPlayer['eliminationReason']>,now:number,killerId?:string){
   const p=this.players.get(id);if(!p?.alive)return;
   p.placement=[...this.players.values()].filter(v=>v.alive).length;p.alive=false;p.hp=0;p.eliminationReason=reason;p.eliminatedAt=now;p.survivalMs=Math.max(0,now-this.startAt);p.killerId=killerId;
-  const actor=this.game.players.get(id)!;actor.alive=false;actor.hp=0;actor.dashSpeed=0;actor.velocityX=0;actor.velocityY=0;
+  const actor=this.game.players.get(id)!;this.game.items.clearPlayer(actor);actor.alive=false;actor.hp=0;actor.dashSpeed=0;actor.velocityX=0;actor.velocityY=0;
   this.game.inputs.get(id)!.time=-Infinity;
   if(reason==='killed'&&killerId&&killerId!==id){const killer=this.players.get(killerId);if(killer)killer.kills++;}
  }
  quit(id:string,now:number){const p=this.players.get(id);if(p)p.connected=false;this.grace.delete(id);if(this.finished())return;this.eliminate(id,'quit',now);this.resolve(now);}
  resolve(now=Date.now()){
   if(this.finished())return;
-  if(![...this.players.values()].some(p=>p.connected&&!this.bots.has(p.id))){this.phase='CANCELLED';this.winnerId=undefined;return;}
-  if(this.practice)return;
+  if(![...this.players.values()].some(p=>p.connected&&!this.bots.has(p.id))){this.phase='CANCELLED';this.winnerId=undefined;this.game.items.clear();return;}
+  if(this.practice){if(this.players.size>1&&[...this.players.values()].filter(p=>p.alive).length<=1)this.game.items.clear();return;}
   const alive=[...this.players.values()].filter(p=>p.alive);
-  if(alive.length<=1){this.phase='WINNER';this.draw=alive.length===0;this.winnerId=alive[0]?.id;if(alive[0]){alive[0].placement=1;alive[0].survivalMs=Math.max(0,now-this.startAt);}
+  if(alive.length<=1){this.game.items.clear();this.phase='WINNER';this.draw=alive.length===0;this.winnerId=alive[0]?.id;if(alive[0]){alive[0].placement=1;alive[0].survivalMs=Math.max(0,now-this.startAt);}
    this.endedAt=now;this.resultAt=now+CELEBRATION_MS;this.result=buildMatchResult(this.identities,this.players,this.startAt,now,this.winnerId,this.draw);}
  }
  private finished(){return this.phase==='WINNER'||this.phase==='RESULT'||this.phase==='CANCELLED';}
@@ -46,7 +46,7 @@ export class MatchSession {
   if(now<this.startAt)return;
   this.phase='PLAYING';this.game.combatEnabled=now>=this.protectionEnd;
   const before=new Map([...this.game.players.values()].map(p=>[p.id,{x:p.x,y:p.y}]));
-  this.botController.update();this.game.step();
+  this.botController.update();this.game.step(undefined,now);
   for(const event of this.game.events){
    if(event.id<=this.lastEventId)continue;this.lastEventId=event.id;
    if(event.type==='damage'){const p=this.players.get(event.attackerId);if(p){p.damageDealt+=event.damage;p.attackTargets??={};p.attackTargets[event.targetId]=(p.attackTargets[event.targetId]||0)+1;}const victim=this.players.get(event.targetId);if(victim)victim.damageTaken=(victim.damageTaken||0)+event.damage;}

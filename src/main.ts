@@ -1,3 +1,5 @@
+import {ItemPresentation} from './client/presentation/ItemPresentation';
+import './client/ui/items.css';
 import {installHudMotion} from './client/ui/HudMotion';
 import {CombatArt} from './client/art/CombatArt';
 import {characterFace} from './client/presentation/CharacterFace';
@@ -179,14 +181,15 @@ export class Arena extends Phaser.Scene {
   hitFlashes=new Map<string,number>();
   terrain = generateTerrain();
   visuals!:CombatVisuals;characterGraphics!:Phaser.GameObjects.Graphics;
-  art!:CombatArt;
+  art!:CombatArt;itemPresentation!:ItemPresentation;
   g!: Phaser.GameObjects.Graphics; labels: Phaser.GameObjects.Text[] = []; keys!: Record<string, Phaser.Input.Keyboard.Key>;
   px=700; py=710; hp=100; energy=0; angle=-Math.PI/2; targets: Target[]=[]; shots: Shot[]=[]; effects: Effect[]=[];
   predictedDashUntil=0;predictedDashAngle=0;
   localShotId=0;
   attackAt=0; skillAt=0; hazardAt=0; elapsed=0; moving=false; ended=false; stamp=0;
   constructor(){ super('Arena'); }
-  create(){ scene=this; this.g=this.add.graphics().setDepth(0);this.characterGraphics=this.add.graphics().setDepth(10);this.visuals=new CombatVisuals(this,false);this.art=new CombatArt(this); this.keys=this.input.keyboard!.addKeys('W,A,S,D,SPACE,ESC,F3') as typeof this.keys;
+  preload(){this.load.image('item-icons','/items/item-icons.png');}
+  create(){ scene=this; this.g=this.add.graphics().setDepth(0);this.characterGraphics=this.add.graphics().setDepth(10);this.visuals=new CombatVisuals(this,false);this.art=new CombatArt(this);this.itemPresentation=new ItemPresentation(this); this.keys=this.input.keyboard!.addKeys('W,A,S,D,SPACE,ESC,F3') as typeof this.keys;
     this.desktopInput=new DesktopInputAdapter(()=>({moveX:Number(this.keys.D.isDown)-Number(this.keys.A.isDown),moveY:Number(this.keys.S.isDown)-Number(this.keys.W.isDown),attack:this.input.activePointer.isDown&&this.input.activePointer.leftButtonDown()}));
     mobileInput.skillAimMode=kit.skillAimMode;
     this.input.mouse!.disableContextMenu(); this.cameras.main.setBackgroundColor('#e8f0eb');
@@ -197,7 +200,7 @@ export class Arena extends Phaser.Scene {
     window.addEventListener('blur',()=>this.clearInput());document.addEventListener('visibilitychange',()=>{if(document.hidden)this.clearInput();});window.addEventListener('resize',()=>this.clearInput()); this.input.keyboard!.enabled = false; this.reset();
   }
   clearInput(){ this.desktopInput?.clear();mobileInput.clear();if(multiplayer)network.send(0,0,this.angle,true);this.input.keyboard?.resetKeys(); this.input.activePointer.reset(); }
-  reset(){this.art?.clear();$('combat-status').hidden=true;$('reset').title='重置训练';$('reset').querySelector('span')!.textContent='重置训练';this.networkRound=-1;this.predictedDashUntil=0;this.hitFlashes.clear();document.querySelector('.arena-hud div div>span')!.textContent='自由练习 · 无时间限制';document.querySelector('.targets small')!.innerHTML='/ 04<br>训练靶存活';this.terrain=generateTerrain();this.hazardAt=0;this.px=700;this.py=710;this.hp=100;this.energy=0;this.shots=[];this.effects=[];this.elapsed=0;this.attackAt=0;this.skillAt=0;this.ended=false;this.clearInput();$('result').hidden=true;
+  reset(){this.art?.clear();this.itemPresentation?.clear();$('combat-status').hidden=true;$('reset').title='重置训练';$('reset').querySelector('span')!.textContent='重置训练';this.networkRound=-1;this.predictedDashUntil=0;this.hitFlashes.clear();document.querySelector('.arena-hud div div>span')!.textContent='自由练习 · 无时间限制';document.querySelector('.targets small')!.innerHTML='/ 04<br>训练靶存活';this.terrain=generateTerrain();this.hazardAt=0;this.px=700;this.py=710;this.hp=100;this.energy=0;this.shots=[];this.effects=[];this.elapsed=0;this.attackAt=0;this.skillAt=0;this.ended=false;this.clearInput();$('result').hidden=true;
     this.targets=[{x:300,y:340,type:'INFP',color:0x8fbda1},{x:1100,y:340,type:'ESTJ',color:0x8bb6d4},{x:330,y:660,type:'ESTP',color:0xdec67f},{x:1080,y:660,type:'ENTP',color:0xb69bfa}].map(t=>({...t,hp:150,max:150,broken:0,hit:0}));this.toast('WASD 移动 · 左键攻击 · 右键破防 · 空格大招');this.hud();}
   toastTimer?: ReturnType<typeof setTimeout>;
   toast(text:string){clearTimeout(this.toastTimer);$('toast').textContent=text;$('toast').hidden=false;this.toastTimer=setTimeout(()=>{$('toast').hidden=true;},4000);}
@@ -286,6 +289,9 @@ export class Arena extends Phaser.Scene {
     $('network-stats').textContent=`Player: ${network.id || '—'}    Players: ${count} / ${NET.maxPlayers}\nPing: ${network.ping} ms\nServer: ${NET.tickRate} ticks/s · Tick ${network.tick}\nSnapshot: ${NET.snapshotRate}/s`+(debugNetwork?`\nLOCAL ${network.id} X:${this.px.toFixed(1)} Y:${this.py.toFixed(1)} Aim:${this.angle.toFixed(2)}\nSeq ${network.seq} / Ack ${localState?.lastAckSeq||0}\nError ${this.predictionError.toFixed(1)} / Corrections ${this.correctionCount}\nJitter ${network.jitter} ms / Character Alpha\nLast Attack Tick ${localState?.lastAttackTick??'—'}`:'');
     for(const event of network.combatQueue.splice(0)){
       if(event.round!==this.networkRound)continue;
+      this.itemPresentation.event(event);
+      if(event.type==='sniper')continue;
+      if(event.type==='item'){if(event.action==='spawn'&&event.pickupType==='sniper')this.toast('狙击枪已出现 · 注意红色瞄准线');continue;}
       if(event.type==='cover'){this.art.cover(event.x,event.y,event.destroyed);continue;}
       if(event.type==='damage'){
         if(event.source!=='environment')this.art.hit(event.x,event.y);
@@ -336,6 +342,7 @@ export class Arena extends Phaser.Scene {
 
     if(multiplayer){const snap=network.snapshots.at(-1)?.value;if(snap)for(const zone of snap.zones){this.visuals.zone(zone,snap.players.find(p=>p.id===zone.ownerId)?.mbti||'ENTP',network.tick,this.stamp);if(zone.kind==='prediction'&&zone.targetId){const t=snap.players.find(p=>p.id===zone.targetId);if(t)this.visuals.geometry.aimLine(t.x,t.y,Math.atan2(zone.y-t.y,zone.x-t.x),Math.hypot(zone.x-t.x,zone.y-t.y),0xac98db);}}}
     for(const t of this.targets){this.person(t.x,t.y,t.color,t.type+' / DUMMY',t.hp,t.max,false,t.hit>this.time.now,this.angle,false,false,t.type);if(t.broken>this.time.now&&t.hp>0)this.text(t.x,t.y-112,'破防 ↑50%',12,'#9165b7');}this.person(this.px,this.py,currentCharacter().color,`${currentCharacter().mbti} / ${playerNickname}`,this.hp,localStateMaxHp(),true,multiplayer&&(this.hitFlashes.get(network.id)||0)>this.time.now,this.angle,this.moving,false,currentCharacter().mbti,multiplayer?network.id:undefined);if(this.hp>0&&terrainSpeed(this.px,this.py,this.terrain.mud)<1)this.text(this.px,this.py-132,'泥潭 · 减速 40%',13,'#a47a37');
+    const renderedRemotes=multiplayer?network.remotes():[];
     if(multiplayer){
       const snapshot=network.snapshots.at(-1);
       if(snapshot&&network.connected){
@@ -347,7 +354,7 @@ export class Arena extends Phaser.Scene {
           const owner=snapshot.value.players.find(p=>p.id===shot.ownerId);this.visuals.projectile(shot,x,y,owner?.mbti||'ENTP',this.stamp);
         }
       }
-      for(const remote of network.remotes()){
+      for(const remote of renderedRemotes){
         this.person(remote.x,remote.y,getCharacter(remote.mbti).color,`${remote.mbti} / ${remote.nickname}`,remote.hp,remote.maxHp,false,(this.hitFlashes.get(remote.id)||0)>this.time.now,remote.aimAngle,remote.movementState==='walk',true,remote.mbti,remote.id);
         if(debugNetwork)this.text(remote.x,remote.y+64,`REMOTE ${remote.id} X:${remote.x.toFixed(0)} Y:${remote.y.toFixed(0)} Aim:${remote.aimAngle.toFixed(2)}`,11,'#42765f');
       }
@@ -362,7 +369,7 @@ export class Arena extends Phaser.Scene {
     for(const s of this.shots)this.visuals.projectile({id:s.id,source:s.skill?'skill':'basic',vx:s.vx,vy:s.vy},s.x,s.y,'ENTP',this.stamp);
     if(this.effects.length>80)this.effects.splice(0,this.effects.length-80);
     for(const e of this.effects)this.visuals.effect(e);
-    this.art.draw();
+    this.art.draw();this.itemPresentation.draw(multiplayer?network.snapshots.at(-1)?.value:undefined,new Map<string,{x:number;y:number;aimAngle:number}>([...renderedRemotes.map(p=>[p.id,p] as const),[network.id,{x:this.px,y:this.py,aimAngle:this.angle}] as const]),network.id,Math.min(this.game.loop.delta/1000,.1),(x,y,text,size,color)=>this.text(x,y,text,size,color));
     if(debugNetwork){const map=this.terrain;this.text(700,110,`Seed ${map.seed} · ${map.profile} · Budget ${map.budget}/${30} · Safe R ${map.spawnSafeRadius}`,13,'#574160');g.lineStyle(2,0x83a759,.7);for(const p of map.spawns||[])g.strokeCircle(p.x,p.y,map.spawnSafeRadius||105);g.lineStyle(2,0xe07984,.8);for(const w of map.walls)g.strokeRect(w.x,w.y,w.w,w.h);for(const pool of [...map.mud,...(map.toxic||[])])g.strokePoints(pool.points,true);}
     if(debugNetwork){const stats=this.visuals.stats;this.visuals.memes.draw(235,155,`VFX ${stats.symbols.active}/${stats.symbols.limit} emoji · ${stats.text.active}/${stats.text.limit} text · ${Math.round(this.game.loop.actualFps)} FPS · 粒子 ${this.art.stats.particles}/${this.art.stats.budget}`,{fontSize:12,color:'#574160',screenSpace:true});}
 

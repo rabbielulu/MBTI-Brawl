@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION=16;
+export const PROTOCOL_VERSION=17;
 export const NET = {
   tickRate:30, snapshotRate:20, inputRate:30, interpolationMs:100,
   smallError:12, snapError:120, correctionRate:8, inputTimeoutMs:250,

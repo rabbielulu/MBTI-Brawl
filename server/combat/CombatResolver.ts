@@ -14,10 +14,10 @@ export function meleeTargets(attacker:NetworkPlayerState,players:Iterable<Networ
   return true;
  });
 }
-export function applyDamage(attacker:NetworkPlayerState,target:NetworkPlayerState,damage:number,knockbackX:number,knockbackY:number,gainEnergy=true,environment=false) {
+export function applyDamage(attacker:NetworkPlayerState,target:NetworkPlayerState,damage:number,knockbackX:number,knockbackY:number,gainEnergy=true,environment=false,now=Date.now(),lethal=false) {
  if(!target.alive||(!environment&&attacker.id===target.id))return 0;
  const vulnerable=status(target,'vulnerable')?.strength||1,reduction=status(target,'reduction')?.strength||1;
- const mitigated=Math.max(0,environment?damage:Math.round(damage*vulnerable*reduction)),absorbed=Math.min(target.shield||0,mitigated);target.shield=Math.max(0,(target.shield||0)-absorbed);const actual=Math.min(target.hp,mitigated-absorbed);target.hp=Math.max(0,target.hp-actual);if(target.hp<1e-7)target.hp=0;
+ const mitigated=Math.max(0,lethal?Math.ceil(target.hp+(target.shield||0)):environment?damage:Math.round(damage*vulnerable*reduction)),absorbed=Math.min(target.shield||0,mitigated);target.shield=Math.max(0,(target.shield||0)-absorbed);const actual=Math.min(target.hp,mitigated-absorbed);target.hp=Math.max(0,target.hp-actual);if(target.hp<1e-7)target.hp=0;
  if(!environment&&status(target,'reduction')&&target.mbti==='INFP')target.grievance=Math.min(getCharacter(target.mbti).skill.params.grievanceMax,target.grievance+actual);
  const trait=getCharacter(attacker.mbti).trait;
  if(gainEnergy)attacker.personality=Math.min(attacker.personalityMax,attacker.personality+actual*(trait.id==='debate'&&target.statuses.some(s=>['vulnerable','slow','mark','confusion','forced'].includes(s.id))?trait.params.energyMultiplier:trait.id==='sensitive'&&attacker.hp/attacker.maxHp<trait.params.hpThreshold?1+trait.params.maxEnergyBonus:1));

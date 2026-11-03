@@ -111,8 +111,8 @@ export class FlowerTool{
   ctx.save();ctx.globalAlpha=alpha;ctx.translate(x,y);ctx.rotate(sway/F.height*.28);ctx.drawImage(sprite,0,0,sprite.width,sprite.height,-width/2,-height+4,width,height);ctx.restore();
  }
  private drawVector(ctx:CanvasRenderingContext2D,x:number,y:number,sway:number,color:string,alpha:number){
-  ctx.save();ctx.globalAlpha=alpha;ctx.translate(x,y);ctx.strokeStyle='#4E8756';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(sway*.7,-F.height*.35,sway,-F.height*.65);ctx.stroke();
-  ctx.fillStyle='#649960';for(const side of [-1,1]){ctx.beginPath();ctx.ellipse(side*12,-F.height*.26,23,11,side*.65,0,Math.PI*2);ctx.fill();}
+  ctx.save();ctx.globalAlpha=alpha;ctx.translate(x,y);ctx.strokeStyle='#4E8756';ctx.lineWidth=4*F.visualScale;ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(sway*.7,-F.height*.35,sway,-F.height*.65);ctx.stroke();
+  ctx.fillStyle='#649960';for(const side of [-1,1]){ctx.beginPath();ctx.ellipse(side*12*F.visualScale,-F.height*.26,23*F.visualScale,11*F.visualScale,side*.65,0,Math.PI*2);ctx.fill();}
   ctx.translate(sway,-F.height*.64);const radius=F.cellSize*F.widthRatio*.28;ctx.fillStyle=color;
   for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.ellipse(Math.cos(a)*radius*.65,Math.sin(a)*radius*.55,radius,radius*.68,a,0,Math.PI*2);ctx.fill();}
   ctx.fillStyle='#FFD56A';ctx.beginPath();ctx.arc(0,0,radius*.43,0,Math.PI*2);ctx.fill();ctx.restore();

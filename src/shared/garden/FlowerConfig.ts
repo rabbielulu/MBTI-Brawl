@@ -1,6 +1,7 @@
 import {GARDEN} from './GardenConfig';
 /** Dimensions use the visible ~110px character silhouette (145px DOM box includes padding), in garden world coordinates. */
-export const FLOWERS={characterHeight:110,cellSize:110*.65,height:110*.5,widthRatio:.96,range:110*3,playerLimit:200,roomLimit:1600,rate:12,maxBatch:32,batchMs:200,crouchSpeed:.5,swayRadius:110*.65,originX:GARDEN.margin,originY:GARDEN.minY,minX:GARDEN.margin,maxX:GARDEN.width-GARDEN.margin,minY:GARDEN.minY,maxY:GARDEN.maxY} as const;
+const flowerScale=.5;
+export const FLOWERS={characterHeight:110,visualScale:flowerScale,cellSize:110*.65*flowerScale,height:110*.5*flowerScale,widthRatio:.96,range:110*3,playerLimit:200,roomLimit:1600,rate:12,maxBatch:32,batchMs:200,crouchSpeed:.5,swayRadius:110*.65*flowerScale,originX:GARDEN.margin,originY:GARDEN.minY,minX:GARDEN.margin,maxX:GARDEN.width-GARDEN.margin,minY:GARDEN.minY,maxY:GARDEN.maxY} as const;
 export const FLOWER_PALETTE=['#FF77AA','#F25F5C','#FF9F43','#FFD166','#FFF3CC','#9BD66F','#5AC8A0','#68CBE8','#7C9EE8','#B899E7','#E5B9DE','#FFFFFF'];
 export interface FlowerCell{gx:number;gz:number}
 export interface FlowerRecord extends FlowerCell{id:string;roomId:string;flowerType:'basic';colorHex:string;ownerPlayerId:string;revision:number}

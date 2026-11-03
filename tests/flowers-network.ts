@@ -18,7 +18,7 @@ try{
  const done=event<FlowerResult>(resumed.socket,'garden:flowers:result');resumed.socket.emit('garden:flowers:erase',{requestId:'mine',flowerIds:[snapshot.flowers[0].id]});assert.equal((await done).accepted.length,1);
  // Eight simultaneous clients draw against the unchanged production grid.
  const group=[a,b,c,resumed].filter(v=>v.socket.connected);while(group.length<8)group.push(await connect());
- const valid=group.filter(v=>v.socket.connected);const cells=[{gx:7,gz:3},{gx:8,gz:3},{gx:9,gz:3},{gx:10,gz:3},{gx:7,gz:4},{gx:8,gz:4},{gx:9,gz:4},{gx:10,gz:4}];
+ const valid=group.filter(v=>v.socket.connected);const cells=valid.map((v,i)=>{const p=v.welcome.players.find((p:any)=>p.id===v.welcome.id),base=flowerCell(p.x,p.y);return {gx:base.gx,gz:base.gz+i};});
  const draw=await Promise.all(valid.map((v,i)=>plant(v.socket,{...request,requestId:'parallel-'+i,cells:[cells[i]]})));assert.ok(draw.every(r=>r.accepted.length===1));
  // Model a lost acknowledgement: delay 150ms and replay the same request IDs.
  await new Promise(r=>setTimeout(r,150));

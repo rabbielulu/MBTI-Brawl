@@ -14,7 +14,7 @@ assert.equal(store.plant('b',b,request('race',[cell]),0).result.rejected[0].reas
 const id=[...store.flowers.keys()][0];assert.equal(store.erase('b',b,{requestId:'not-owner',flowerIds:[id]}).result.rejected[0].reason,'只能擦除自己的花');
 assert.equal(store.plant('a',a,request('bad-color',[{gx:cell.gx+1,gz:cell.gz}],'red'),0).result.message?.includes('无效'),true);
 assert.equal(store.plant('a',a,request('boundary',[{gx:-1,gz:0}]),0).result.rejected[0].reason,'格子或颜色无效');
-assert.equal(store.plant('a',a,request('far',[{gx:17,gz:8}]),0).result.rejected[0].reason,'超出种植距离');
+assert.equal(store.plant('a',a,request('far',[{gx:36,gz:0}]),0).result.rejected[0].reason,'超出种植距离');
 assert.equal(store.plant('a',a,request('oversize',Array.from({length:33},()=>cell)),0).result.message?.includes('32'),true);
 world.remove('a');assert.equal(store.flowers.size,1,'flowers survive owner leaving while others remain');
 assert.equal(store.erase('a',a,{requestId:'own-erase',flowerIds:[id]}).result.accepted.length,1);assert.equal(store.flowers.size,0);
@@ -25,7 +25,7 @@ const c=world.add('c','C','INFJ')!;const x=c.x;world.input(c.id,{...gardenInput(
 world.input(c.id,{...gardenInput(),crouch:true,jump:true});world.step();assert.equal(c.crouching,false);assert.ok(c.z>0);
 c.z=0;c.vz=0;c.holdParent=b.id;world.input(c.id,{...gardenInput(),crouch:true});world.step();assert.equal(c.crouching,false);c.holdParent=null;
 world.input(c.id,{...gardenInput(),crouch:true});world.step();for(let i=0;i<20;i++)world.step();assert.equal(c.crouching,false);
-// Production map capacity is explicit, rather than pretending it can hold 1600 waist-high flowers.
+// Production map capacity is explicit, rather than pretending it can hold 1600 flowers.
 const available:FlowerCell[]=[];for(let gz=0;gz<100;gz++)for(let gx=0;gx<100;gx++)if(validFlowerCell({gx,gz}))available.push({gx,gz});
 console.log('Production garden grid capacity:',available.length);
 const limited=new FlowerStore(F,{player:1,room:2,rate:12,range:10000});limited.plant('a',a,request('limit-a',[available[0]]),0);assert.equal(limited.plant('a',a,request('limit-b',[available[1]]),0).result.rejected[0].reason,'个人数量已满');limited.plant('b',b,request('limit-c',[available[1]]),0);assert.equal(limited.plant('c',c,request('limit-d',[available[2]]),0).result.rejected[0].reason,'花园数量已满');

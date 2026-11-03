@@ -7,6 +7,10 @@ export type GardenPose = Record<'leftArm'|'rightArm'|'leftLeg'|'rightLeg',number
 export function gardenPose(player:GardenPlayer,time:number):GardenPose {
  const pose:GardenPose={leftArm:[50,82,38,92,25,101],rightArm:[50,82,62,92,75,101],leftLeg:[50,109,40,123,31,137],rightLeg:[50,109,60,123,69,137]};
  if(player.lying||player.thrown||player.carriedBy){pose.leftArm=[50,82,28,72,31,49];pose.rightArm=[50,82,71,100,50,106];}
+ else if(player.crouching){
+  pose.leftArm=[50,82,34,91,25,105];pose.rightArm=[50,82,66,91,75,105];
+  pose.leftLeg=[50,109,24,113,36,118];pose.rightLeg=[50,109,76,113,64,118];
+ }
  else if(player.sitting){
   // Cross-legged reference: low, wide knees and inward-folded feet.
   pose.leftArm=[50,79,32,94,14,109];pose.rightArm=[50,79,68,94,86,109];

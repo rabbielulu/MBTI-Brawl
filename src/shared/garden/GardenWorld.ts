@@ -1,3 +1,4 @@
+import {FLOWERS} from './FlowerConfig';
 import {GARDEN as C,gardenInput,canGardenHold,canGardenLift,type GardenInput,type GardenPlayer,type GardenSnapshot} from './GardenConfig';
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 export class GardenWorld {
@@ -12,7 +13,7 @@ export class GardenWorld {
  input(id:string,raw:GardenInput){
   if(!this.players.has(id)||!raw||typeof raw!=='object')return;
   const prev=this.inputs.get(id)?.value;
-  this.inputs.set(id,{at:this.time,value:{x:clamp(Number(raw.x)||0,-1,1),y:clamp(Number(raw.y)||0,-1,1),jump:!!raw.jump||!!prev?.jump,sit:!!raw.sit||!!prev?.sit,releaseHold:!!raw.releaseHold||!!prev?.releaseHold,liftTarget:typeof raw.liftTarget==='string'&&raw.liftTarget.length<=100?raw.liftTarget:prev?.liftTarget||null,throwNow:!!raw.throwNow||!!prev?.throwNow,aimX:Number.isFinite(raw.aimX)?clamp(raw.aimX,-1,1):1,aimY:Number.isFinite(raw.aimY)?clamp(raw.aimY,-1,1):0,wave:!!raw.wave||!!prev?.wave,holdTarget:typeof raw.holdTarget==='string'&&raw.holdTarget.length<=100?raw.holdTarget:prev?.holdTarget||null,shake:Math.max(-1,Math.min(1,Number(raw.shake)||0)),active:!!raw.active}});
+  this.inputs.set(id,{at:this.time,value:{x:clamp(Number(raw.x)||0,-1,1),y:clamp(Number(raw.y)||0,-1,1),jump:!!raw.jump||!!prev?.jump,sit:!!raw.sit||!!prev?.sit,releaseHold:!!raw.releaseHold||!!prev?.releaseHold,liftTarget:typeof raw.liftTarget==='string'&&raw.liftTarget.length<=100?raw.liftTarget:prev?.liftTarget||null,throwNow:!!raw.throwNow||!!prev?.throwNow,aimX:Number.isFinite(raw.aimX)?clamp(raw.aimX,-1,1):1,aimY:Number.isFinite(raw.aimY)?clamp(raw.aimY,-1,1):0,wave:!!raw.wave||!!prev?.wave,holdTarget:typeof raw.holdTarget==='string'&&raw.holdTarget.length<=100?raw.holdTarget:prev?.holdTarget||null,shake:Math.max(-1,Math.min(1,Number(raw.shake)||0)),crouch:!!raw.crouch,active:!!raw.active}});
  }
  private breakHold(p:GardenPlayer){if(p.holdParent){const parent=this.players.get(p.holdParent);if(parent)parent.holdChild=null;}p.holdParent=null;p.escape=0;this.shakeTimes.delete(p.id);}
  private detachHands(p:GardenPlayer){this.breakHold(p);if(p.holdChild){const child=this.players.get(p.holdChild);if(child)this.breakHold(child);p.holdChild=null;}}
@@ -31,16 +32,17 @@ export class GardenWorld {
    const airborne=p.thrown||!!p.carriedBy,resting=this.time<p.landedUntil;
    if(airborne||resting){i.x=0;i.y=0;i.jump=false;i.sit=false;i.holdTarget=null;i.liftTarget=null;}
    if(p.carrying)i.sit=false;
+   p.crouching=!!i.crouch&&!i.jump&&p.z===0&&!airborne&&!resting&&!p.holdParent&&!p.holdChild&&!p.carrying;
    const moving=!!(i.x||i.y);p.moving=moving&&!p.holdParent;
    if(moving||i.jump||i.sit||i.releaseHold||i.wave||i.holdTarget||i.liftTarget||i.throwNow||i.shake||i.active)p.idle=0;else p.idle+=dt;
    if(i.sit&&!moving&&!i.jump&&!p.holdParent&&p.z===0){p.sitting=!p.sitting;p.lying=false;}
-   if(moving||i.jump||p.holdParent||airborne){p.lying=false;p.sitting=false;}
+   if(moving||i.jump||p.holdParent||airborne||p.crouching){p.lying=false;p.sitting=false;}
    else if(!p.sitting&&!p.carrying&&p.idle>C.IdleToLyingTime)p.lying=true;
    if(i.wave&&this.time>=p.waveUntil-C.WaveDuration+C.WaveCooldown)p.waveUntil=this.time+C.WaveDuration;
-   if(!p.holdParent&&!airborne&&!resting){const n=Math.max(1,Math.hypot(i.x,i.y));p.x+=i.x/n*C.GardenMoveSpeed*dt;p.y+=i.y/n*C.GardenMoveSpeed*dt;if(i.x)p.facing=Math.sign(i.x);}
+   if(!p.holdParent&&!airborne&&!resting){const n=Math.max(1,Math.hypot(i.x,i.y));p.x+=i.x/n*C.GardenMoveSpeed*(p.crouching?FLOWERS.crouchSpeed:1)*dt;p.y+=i.y/n*C.GardenMoveSpeed*(p.crouching?FLOWERS.crouchSpeed:1)*dt;if(i.x)p.facing=Math.sign(i.x);}
    if(i.jump&&!airborne&&!p.holdParent&&p.vz===0){p.vz=jumpSpeed;p.lying=false;}
    if(i.liftTarget){const q=this.players.get(i.liftTarget);if(q&&canGardenLift(p,q)){
-    this.detachHands(p);this.detachHands(q);p.carrying=q.id;q.carriedBy=p.id;
+    this.detachHands(p);this.detachHands(q);p.carrying=q.id;q.carriedBy=p.id;p.crouching=false;q.crouching=false;
     p.lying=false;p.sitting=false;q.lying=false;q.sitting=false;q.waveUntil=0;q.vx=0;q.vy=0;q.vz=0;
    }}
    if(i.throwNow&&p.carrying){const q=this.players.get(p.carrying);if(q){
@@ -55,7 +57,7 @@ export class GardenWorld {
    }
    if(i.holdTarget&&this.time-p.lastHold>0.22){
     p.lastHold=this.time;p.holdResult=false;const q=this.players.get(i.holdTarget);
-    if(q&&canGardenHold(p,q,this.players)){q.holdParent=p.id;p.holdChild=q.id;q.lying=false;q.sitting=false;q.escape=0;p.holdResult=true;}
+    if(q&&canGardenHold(p,q,this.players)){q.holdParent=p.id;p.holdChild=q.id;q.crouching=false;p.crouching=false;q.lying=false;q.sitting=false;q.escape=0;p.holdResult=true;}
    }
    if(p.holdParent){
     const s=this.shakeTimes.get(p.id);if(i.shake){if(s&&s.direction!==i.shake&&this.time-s.time<C.EscapeAlternationWindow)p.escape+=C.EscapeProgressSpeed;this.shakeTimes.set(p.id,{direction:i.shake,time:this.time});}

@@ -137,3 +137,13 @@ GitHub Pages 只托管前端，不运行 Node/Socket.IO 服务。未配置游戏
 ## Supabase 云端周榜
 
 新增 Supabase Postgres 接入、服务端环境变量模板及建表 SQL。配置方法和线上验收见 [Supabase 接入说明](docs/SUPABASE.md)。实时对战继续使用 Node.js / Socket.IO，仍需单独托管。
+
+## 小小花园 · 花花涂鸦 V1
+
+花园内点击「花朵工具」，选色后点击或拖动草地种花；12 个预设色和自定义色只影响新花。橡皮擦只能删除自己的花，Esc 优先关闭色板，再退出工具。Ctrl 按住蹲下并半速移动，Space 跳跃退出蹲下；原有 E 挥手、牵手和投掷保留。色板打开时暂停场景绘画。
+
+当前地图有 162 个合法格，个人上限 200、房间安全预算 1600，服务端验证范围、所有权、配额、限速和请求幂等。作品仅在房间内存保存：其他玩家在场时离开仍保留，最后一人离开或 Host 重启清空。同标签页短暂断线可在 30 秒内恢复身份及自己的花；不提供永久账号所有权。
+
+参数集中在 `src/shared/garden/FlowerConfig.ts`。`?flowerDebug=1` 显示网格、revision、队列与绘制耗时；`npm run test:flowers` 检查规则与 8 客户端网络同步。开发服务的 `/tests/flower-render.html?flowerDebug=1` 提供合成绘制压力页，不进入生产构建。
+
+更新需构建并重启 Node Host，所有客户端刷新。详见 [阶段实施、实测与待验收范围](docs/FLOWER-PAINTING-V1.md)。低端设备、真实公网弱网和长期内存测试仍待完成；1600 朵合成压测不代表当前地图可种 1600 格。

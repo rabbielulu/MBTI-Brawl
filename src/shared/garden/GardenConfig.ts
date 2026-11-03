@@ -9,13 +9,13 @@ export const GARDEN = {
  EscapeMouseThreshold:12,EscapeProgressSpeed:0.16,EscapeProgressDecay:0.22,EscapeAlternationWindow:0.65,
  IdleToLyingTime:25,WaveCooldown:1,WaveDuration:1.8,inputTimeout:0.45,
 } as const;
-export interface GardenInput {x:number;y:number;jump:boolean;sit:boolean;releaseHold:boolean;wave:boolean;holdTarget:string|null;liftTarget:string|null;throwNow:boolean;aimX:number;aimY:number;shake:number;active:boolean}
+export interface GardenInput {x:number;y:number;jump:boolean;sit:boolean;releaseHold:boolean;wave:boolean;holdTarget:string|null;liftTarget:string|null;throwNow:boolean;aimX:number;aimY:number;shake:number;active:boolean;crouch?:boolean}
 export const gardenInput=():GardenInput=>({x:0,y:0,jump:false,sit:false,releaseHold:false,wave:false,holdTarget:null,liftTarget:null,throwNow:false,aimX:1,aimY:0,shake:0,active:false});
 export interface GardenPlayer {
  id:string;nickname:string;mbti:string;x:number;y:number;z:number;vz:number;facing:number;
  carriedBy:string|null;carrying:string|null;thrown:boolean;flightTime:number;vx:number;vy:number;landedUntil:number;
  holdParent:string|null;holdChild:string|null;waveUntil:number;
- idle:number;lying:boolean;sitting:boolean;escape:number;moving:boolean;lastHold:number;holdResult:boolean;
+ idle:number;lying:boolean;sitting:boolean;escape:number;moving:boolean;crouching?:boolean;lastHold:number;holdResult:boolean;
 }
 export interface GardenSnapshot {time:number;players:GardenPlayer[]}
 /** A target must be free, nearby and outside the requester's ancestor chain. */

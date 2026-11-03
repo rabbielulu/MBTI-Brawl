@@ -30,7 +30,8 @@
     "test:vfx": "tsx tests/vfx-pool.ts",
     "test:garden": "tsx tests/garden.ts && tsx tests/garden-bots.ts && tsx tests/garden-throw.ts && tsx tests/garden-network.ts && tsx tests/garden-throw-network.ts",
     "test:supabase": "node --import tsx tests/supabase-leaderboard.ts",
-    "test:assets": "node tests/asset-loader.mjs && node --import tsx tests/asset-cache.ts"
+    "test:assets": "node tests/asset-loader.mjs && node --import tsx tests/asset-cache.ts",
+    "test:flowers": "tsx tests/flowers.ts && tsx tests/flowers-network.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0",
